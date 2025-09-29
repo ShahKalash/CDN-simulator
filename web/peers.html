@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peers Visualization</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    input { width: 480px; }
+    table { border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; }
+    th { background: #f5f5f5; }
+    .ok { color: #0a0; }
+  </style>
+</head>
+<body>
+  <h1>Peers Visualization</h1>
+  <p>Segment ID (path in HLS, e.g., <code>rickroll/128k/index0.m4s</code>)</p>
+  <input id="seg" value="rickroll/128k/index0.m4s" />
+  <button id="load">Load Peers</button>
+  <label style="margin-left:1rem">Region <input id="region" value="us" size="6"></label>
+  <div id="status"></div>
+  <table id="peersTbl" style="display:none">
+    <thead><tr><th>#</th><th>Peer ID</th><th>Region</th><th>RTT</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const status = document.getElementById('status');
+    const tbody = document.querySelector('#peersTbl tbody');
+    const table = document.getElementById('peersTbl');
+    const tracker = 'http://localhost:8090';
+    async function loadPeers(){
+      const seg = document.getElementById('seg').value.trim();
+      const region = document.getElementById('region').value.trim();
+      if(!seg){ return; }
+      status.textContent = 'Loading...';
+      tbody.innerHTML=''; table.style.display='none';
+      try{
+        const res = await fetch(`${tracker}/peers?seg=${encodeURIComponent(seg)}&count=10&region=${encodeURIComponent(region)}`);
+        if(!res.ok){ throw new Error('HTTP '+res.status); }
+        const peers = await res.json();
+        peers.forEach((p,i)=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${i+1}</td><td>${p.peerId}</td><td>${p.region||''}</td><td>${p.rtt||''}</td>`;
+          tbody.appendChild(tr);
+        });
+        table.style.display = peers.length? 'table' : 'none';
+        status.innerHTML = `<span class="ok">${peers.length} peers found</span>`;
+      }catch(e){
+        status.textContent = 'Error: '+e.message;
+      }
+    }
+    document.getElementById('load').onclick = loadPeers;
+  </script>
+</body>
+</html>
+
+
+

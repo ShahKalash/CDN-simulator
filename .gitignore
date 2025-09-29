@@ -1,0 +1,7 @@
+bin/
+assets/hls/
+assets/input/demo.mp3
+**/*.log
+**/.DS_Store
+
+
