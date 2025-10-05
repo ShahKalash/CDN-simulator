@@ -3,38 +3,301 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CDN HLS Test</title>
+  <title>CDN Simulator Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    video { width: 100%; max-width: 800px; background: #000; }
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      padding: 2rem;
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+    
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 15px;
+      color: white;
+    }
+    
+    .hero h1 {
+      font-size: 2.5rem;
+      margin: 0 0 1rem 0;
+    }
+    
+    .hero p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+    
+    .card {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 2rem;
+      border: 1px solid #333;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    
+    .card h3 {
+      color: #4fc3f7;
+      margin: 0 0 1rem 0;
+      font-size: 1.3rem;
+    }
+    
+    .card p {
+      color: #ccc;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    
+    .card a {
+      display: inline-block;
+      background: #0066cc;
+      color: white;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    
+    .card a:hover {
+      background: #0088ff;
+    }
+    
+    .quick-player {
+      background: #2a2a2a;
+      padding: 2rem;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    
+    video { 
+      width: 100%; 
+      max-width: 600px; 
+      background: #000; 
+      border-radius: 5px;
+    }
+    
+    .controls {
+      margin-top: 1rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    input {
+      flex: 1;
+      padding: 10px;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 5px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: #0066cc;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #0088ff;
+    }
+    
+    .quick-links {
+      margin-top: 1rem;
+    }
+    
+    .quick-link {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 12px;
+      background: #444;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    
+    .quick-link:hover {
+      background: #666;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .stat-card {
+      background: #333;
+      padding: 1rem;
+      border-radius: 5px;
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4fc3f7;
+    }
+    
+    .stat-label {
+      color: #ccc;
+      font-size: 0.9rem;
+    }
   </style>
-  </head>
+</head>
 <body>
-  <h1>CDN HLS Test</h1>
-  <p>Edge: http://localhost:8081 — Origin: http://localhost:8080</p>
-  <video id="video" controls></video>
-  <div style="margin-top:1rem">
-    <input id="url" size="80" placeholder="http://localhost:8081/<path>/master.m3u8" />
-    <button id="play">Play</button>
+  <div class="dashboard">
+    <div class="hero">
+      <h1>🎵 CDN Simulator Dashboard</h1>
+      <p>Interactive Content Delivery Network with Peer-to-Peer Capabilities</p>
+      <p><strong>Edge:</strong> http://localhost:8081 — <strong>Origin:</strong> http://localhost:8080</p>
+    </div>
+    
+    <div class="cards">
+      <div class="card">
+        <h3>🎬 Enhanced Player</h3>
+        <p>Interactive HLS player with real-time network visualization. Watch how your content is delivered through the CDN with live routing decisions.</p>
+        <a href="enhanced-player.html">Launch Enhanced Player</a>
+      </div>
+      
+      <div class="card">
+        <h3>🌐 Network Graph</h3>
+        <p>Full network topology visualization with thousands of peers. Simulate requests and see intelligent routing decisions in real-time.</p>
+        <a href="network-graph.html">View Network Graph</a>
+      </div>
+      
+      <div class="card">
+        <h3>👥 Enhanced Peers</h3>
+        <p>Advanced peer visualization with interactive network graph. Explore peer distribution, segment availability, and regional clusters.</p>
+        <a href="enhanced-peers.html">Explore Peers</a>
+
+        <h3>🌐 Interactive Network</h3>
+        <p>Real-time P2P + CDN simulation with visual request routing. Select any node as client and watch intelligent routing decisions in action.</p>
+        <a href="interactive-network.html">Launch Interactive Demo</a>
+
+        <h3>🎵 Upload Songs</h3>
+        <p>Spotify HQ - Upload new songs to the global CDN network. Process audio files into HLS segments and distribute across the network.</p>
+        <a href="song-upload.html">Upload New Song</a>
+      </div>
+      
+      <div class="card">
+        <h3>📊 Simple Peers</h3>
+        <p>Basic peer table view for quick segment queries. Perfect for checking which peers have specific content segments.</p>
+        <a href="peers.html">View Peer Table</a>
+      </div>
+    </div>
+    
+    <div class="quick-player">
+      <h2>🎵 Quick Player</h2>
+      <video id="video" controls></video>
+      <div class="controls">
+        <input id="url" placeholder="http://localhost:8081/rickroll/128k/playlist.m3u8" 
+               value="http://localhost:8081/rickroll/128k/playlist.m3u8" />
+        <button id="play">▶️ Play</button>
+      </div>
+      
+      <div class="quick-links">
+        <strong>Quick Links:</strong>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/rickroll/128k/playlist.m3u8">Rick Roll (128k)</a>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/rickroll/master.m3u8">Rick Roll (Master)</a>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/demo/128k/playlist.m3u8">Demo Audio (128k)</a>
+      </div>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" id="totalPeers">2000+</div>
+        <div class="stat-label">Total Peers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">5</div>
+        <div class="stat-label">Audio Segments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">10+</div>
+        <div class="stat-label">Global Regions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">P2P+CDN</div>
+        <div class="stat-label">Hybrid Architecture</div>
+      </div>
+    </div>
   </div>
   <script>
     const video = document.getElementById('video');
     const input = document.getElementById('url');
+    
+    // Play button
     document.getElementById('play').onclick = () => {
       const src = input.value.trim();
       if (!src) return;
+      
       if (Hls.isSupported()) {
         const hls = new Hls({ lowLatencyMode: false });
         hls.loadSource(src);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+        hls.on(Hls.Events.MANIFEST_PARSED, function() { 
+          video.play(); 
+        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = src; video.play();
+        video.src = src; 
+        video.play();
       } else {
         alert('HLS not supported in this browser');
       }
     };
+    
+    // Quick links
+    document.querySelectorAll('.quick-link').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        const url = link.dataset.url;
+        input.value = url;
+        document.getElementById('play').click();
+      };
+    });
+    
+    // Load peer count
+    async function loadStats() {
+      try {
+        const response = await fetch('http://localhost:8090/peers?seg=rickroll/128k/segment000.ts&count=100&region=');
+        const peers = await response.json();
+        document.getElementById('totalPeers').textContent = peers.length + '+';
+      } catch (error) {
+        console.log('Could not load peer stats');
+      }
+    }
+    
+    // Load stats when page loads
+    window.addEventListener('load', loadStats);
   </script>
 </body>
 </html>

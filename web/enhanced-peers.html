@@ -1,0 +1,850 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enhanced Peers Visualization with Network Graph</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+    
+    .container {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 20px;
+      height: calc(100vh - 40px);
+    }
+    
+    .controls-section {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      overflow-y: auto;
+    }
+    
+    .graph-section {
+      background: #111;
+      border-radius: 10px;
+      border: 1px solid #333;
+      position: relative;
+    }
+    
+    input, button, select {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 3px;
+    }
+    
+    button {
+      background: #0066cc;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #0088ff;
+    }
+    
+    table { 
+      border-collapse: collapse; 
+      margin-top: 1rem; 
+      width: 100%;
+      font-size: 12px;
+    }
+    
+    th, td { 
+      border: 1px solid #444; 
+      padding: 6px 8px; 
+      text-align: left;
+    }
+    
+    th { 
+      background: #333; 
+      font-weight: bold;
+    }
+    
+    tr:nth-child(even) {
+      background: #222;
+    }
+    
+    .ok { color: #0a0; }
+    .status { margin: 10px 0; }
+    
+    /* Network Graph Styles */
+    .node {
+      cursor: pointer;
+      stroke-width: 2px;
+    }
+    
+    .node.origin { fill: #ff4444; stroke: #ff6666; }
+    .node.edge { fill: #4444ff; stroke: #6666ff; }
+    .node.peer { fill: #44ff44; stroke: #66ff66; }
+    .node.peer.has-segment { fill: #00ff00; stroke: #44ff44; }
+    .node.peer.no-segment { fill: #666666; stroke: #888888; }
+    .node.peer.seed-peer { fill: #4CAF50; stroke: #ffffff; stroke-width: 2px; }
+    .node.selected { stroke: #ffffff; stroke-width: 4px; }
+    
+    .link {
+      stroke: #666;
+      stroke-width: 1px;
+      fill: none;
+    }
+    
+    .link.has-segment {
+      stroke: #44ff44;
+      stroke-width: 2px;
+    }
+    
+    /* P2P connection styles */
+    .link.p2p-connection {
+      stroke: #ff6b35;
+      stroke-width: 1.5px;
+      opacity: 0.7;
+      stroke-dasharray: 3,3;
+    }
+    
+    .link.seed-connection {
+      stroke: #4CAF50;
+      stroke-width: 2.5px;
+      opacity: 0.9;
+    }
+    
+    .node-label {
+      font-size: 8px;
+      fill: #ffffff;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+    
+    .region-cluster {
+      fill: none;
+      stroke: #444;
+      stroke-width: 1px;
+      stroke-dasharray: 5,5;
+    }
+    
+    .region-label {
+      font-size: 12px;
+      font-weight: bold;
+      fill: #888;
+      text-anchor: middle;
+    }
+    
+    .legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      font-size: 12px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+      border: 1px solid #666;
+    }
+    
+    .tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #666;
+      pointer-events: none;
+      font-size: 12px;
+      z-index: 1000;
+    }
+    
+    .segment-stats {
+      margin: 15px 0;
+      padding: 10px;
+      background: #2a2a2a;
+      border-radius: 5px;
+      border-left: 4px solid #0066cc;
+    }
+    
+    .filter-section {
+      margin: 15px 0;
+      padding: 10px;
+      background: #333;
+      border-radius: 5px;
+    }
+    
+    .filter-section h4 {
+      margin: 0 0 10px 0;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌐 Enhanced Peers Visualization</h1>
+  
+  <div class="container">
+    <div class="controls-section">
+      <h3>🔍 Peer Query</h3>
+      <label>Segment ID (path in HLS):</label>
+      <input id="seg" value="segment000.ts" placeholder="e.g., segment000.ts" />
+      
+      <label>Region Filter:</label>
+      <select id="region">
+        <option value="">All Regions</option>
+        <option value="us-east">US East</option>
+        <option value="us-west">US West</option>
+        <option value="eu-west">EU West</option>
+        <option value="asia-pacific">Asia Pacific</option>
+        <option value="canada">Canada</option>
+      </select>
+      
+      <button id="load">🔍 Load Peers</button>
+      <button id="loadAll">🌍 Load All Segments</button>
+      
+      <div class="status" id="status"></div>
+      
+      <div class="segment-stats" id="segmentStats" style="display: none;">
+        <h4>📊 Segment Statistics</h4>
+        <div id="statsContent"></div>
+      </div>
+      
+      <div class="filter-section">
+        <h4>🎛️ Graph Filters</h4>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="showPeersWithSegment" checked>
+            <label for="showPeersWithSegment">Peers with segment</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="showPeersWithoutSegment">
+            <label for="showPeersWithoutSegment">Peers without segment</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="showRegionClusters" checked>
+            <label for="showRegionClusters">Region clusters</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="showRTTLabels">
+            <label for="showRTTLabels">RTT labels</label>
+          </div>
+        </div>
+      </div>
+      
+      <table id="peersTbl" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Peer ID</th>
+            <th>Region</th>
+            <th>RTT</th>
+            <th>Bandwidth</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <div class="graph-section">
+      <svg id="networkGraph"></svg>
+      
+      <div class="legend">
+        <h4>🏷️ Legend</h4>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ff4444;"></div>
+          <span>Origin Server</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #4444ff;"></div>
+          <span>Edge Cache</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #00ff00;"></div>
+          <span>Peer (has segment)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #666666;"></div>
+          <span>Peer (no segment)</span>
+        </div>
+      </div>
+      
+      <div class="tooltip" id="tooltip" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    const tracker = 'http://localhost:8092';
+    let simulation, svg, g, allPeers = [], currentSegment = '';
+    let nodes = [], links = [];
+    
+    // Geographic positions for regions
+    const regionPositions = {
+      'us-east': { x: 0.2, y: 0.4, color: '#ff6b6b' },
+      'us-west': { x: 0.1, y: 0.45, color: '#4ecdc4' },
+      'us-central': { x: 0.15, y: 0.42, color: '#45b7d1' },
+      'canada': { x: 0.17, y: 0.25, color: '#f9ca24' },
+      'eu-west': { x: 0.5, y: 0.3, color: '#6c5ce7' },
+      'eu-central': { x: 0.55, y: 0.35, color: '#a29bfe' },
+      'eu-north': { x: 0.52, y: 0.2, color: '#74b9ff' },
+      'asia-pacific': { x: 0.8, y: 0.5, color: '#fd79a8' },
+      'asia-southeast': { x: 0.75, y: 0.6, color: '#fdcb6e' },
+      'asia-northeast': { x: 0.85, y: 0.35, color: '#e17055' },
+      'japan': { x: 0.9, y: 0.4, color: '#00b894' },
+      'australia': { x: 0.82, y: 0.8, color: '#00cec9' },
+      'brazil': { x: 0.3, y: 0.7, color: '#e84393' },
+      'india': { x: 0.7, y: 0.55, color: '#2d3436' }
+    };
+
+    function initGraph() {
+      const container = document.querySelector('.graph-section');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      svg = d3.select('#networkGraph')
+        .attr('width', width)
+        .attr('height', height);
+        
+      g = svg.append('g');
+      
+      // Add zoom behavior
+      const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+        });
+      
+      svg.call(zoom);
+      
+      createInitialTopology(width, height);
+      
+      // Event listeners
+      document.getElementById('load').onclick = loadPeers;
+      document.getElementById('loadAll').onclick = loadAllSegments;
+      
+      // Filter checkboxes
+      ['showPeersWithSegment', 'showPeersWithoutSegment', 'showRegionClusters', 'showRTTLabels'].forEach(id => {
+        document.getElementById(id).onchange = updateGraphFilters;
+      });
+    }
+    
+    function createInitialTopology(width, height) {
+      nodes = [];
+      links = [];
+      
+      // Add origin server (center)
+      nodes.push({
+        id: 'origin',
+        type: 'origin',
+        x: width * 0.5,
+        y: height * 0.5,
+        fx: width * 0.5,
+        fy: height * 0.5,
+        label: 'Origin Server',
+        region: 'global'
+      });
+      
+      // Add edge servers for major regions
+      const majorRegions = ['us-east', 'us-west', 'eu-west', 'asia-pacific'];
+      majorRegions.forEach(region => {
+        const pos = regionPositions[region];
+        const edgeId = `edge-${region}`;
+        
+        nodes.push({
+          id: edgeId,
+          type: 'edge',
+          x: width * pos.x,
+          y: height * pos.y,
+          fx: width * pos.x,
+          fy: height * pos.y,
+          label: `Edge (${region})`,
+          region: region
+        });
+        
+        // Connect edge to origin
+        links.push({
+          source: 'origin',
+          target: edgeId,
+          type: 'backbone'
+        });
+      });
+      
+      updateGraph();
+    }
+    
+    async function loadPeers() {
+      const segment = document.getElementById('seg').value.trim();
+      const region = document.getElementById('region').value.trim();
+      
+      if (!segment) return;
+      
+      currentSegment = segment;
+      document.getElementById('status').textContent = 'Loading...';
+      document.getElementById('peersTbl').style.display = 'none';
+      
+      try {
+        // Get all nodes from network topology
+        const response = await fetch(`${tracker}/topology`);
+        const topology = await response.json();
+        
+        // Filter peers that have the requested segment
+        const peers = [];
+        for (const [nodeId, node] of Object.entries(topology)) {
+          if (node.type === 'peer' && node.storage && node.storage[segment]) {
+            // Apply region filter if specified
+            if (!region || node.region === region) {
+              peers.push({
+                peerId: nodeId,
+                region: node.region,
+                rtt: Math.floor(Math.random() * 200) + 10, // Simulate RTT
+                bandwidth: 'unknown',
+                segments: Object.keys(node.storage).filter(s => node.storage[s])
+              });
+            }
+          }
+        }
+        
+        displayPeers(peers);
+        updateNetworkGraph(peers, segment);
+        
+        document.getElementById('status').innerHTML = `<span class="ok">${peers.length} peers found</span>`;
+        
+      } catch (error) {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    async function loadAllSegments() {
+      const segments = [
+        'segment000.ts',
+        'segment001.ts',
+        'segment002.ts',
+        'segment003.ts',
+        'segment004.ts',
+        'segment005.ts',
+        'segment006.ts',
+        'segment007.ts'
+      ];
+      
+      document.getElementById('status').textContent = 'Loading all segments...';
+      
+      try {
+        const allSegmentPeers = new Map();
+        const peerSegmentMap = new Map();
+        
+        // Get all nodes from network topology
+        const response = await fetch(`${tracker}/topology`);
+        const topology = await response.json();
+        
+        for (const segment of segments) {
+          const peers = [];
+          for (const [nodeId, node] of Object.entries(topology)) {
+            if (node.type === 'peer' && node.storage && node.storage[segment]) {
+              peers.push({
+                peerId: nodeId,
+                region: node.region,
+                rtt: Math.floor(Math.random() * 200) + 10,
+                bandwidth: 'unknown',
+                segments: Object.keys(node.storage).filter(s => node.storage[s])
+              });
+            }
+          }
+          
+          allSegmentPeers.set(segment, peers);
+          
+          peers.forEach(peer => {
+            if (!peerSegmentMap.has(peer.peerId)) {
+              peerSegmentMap.set(peer.peerId, { peer, segments: [] });
+            }
+            peerSegmentMap.get(peer.peerId).segments.push(segment);
+          });
+        }
+        
+        // Display statistics
+        displaySegmentStats(allSegmentPeers, peerSegmentMap);
+        
+        // Update graph with all peers
+        const allUniquePeers = Array.from(peerSegmentMap.values()).map(item => ({
+          ...item.peer,
+          segments: item.segments
+        }));
+        
+        updateNetworkGraphWithAllPeers(allUniquePeers);
+        
+        document.getElementById('status').innerHTML = `<span class="ok">Loaded ${allUniquePeers.length} unique peers across ${segments.length} segments</span>`;
+        
+      } catch (error) {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    function displayPeers(peers) {
+      const tbody = document.querySelector('#peersTbl tbody');
+      tbody.innerHTML = '';
+      
+      peers.forEach((peer, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${peer.peerId}</td>
+          <td>${peer.region || ''}</td>
+          <td>${peer.rtt || ''}ms</td>
+          <td>${peer.bandwidth || 'unknown'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      document.getElementById('peersTbl').style.display = peers.length ? 'table' : 'none';
+    }
+    
+    function displaySegmentStats(allSegmentPeers, peerSegmentMap) {
+      const statsContent = document.getElementById('statsContent');
+      
+      let html = '<div style="font-size: 12px;">';
+      
+      // Segment availability
+      html += '<strong>Segment Availability:</strong><br>';
+      allSegmentPeers.forEach((peers, segment) => {
+        const segmentName = segment.split('/').pop();
+        html += `${segmentName}: ${peers.length} peers<br>`;
+      });
+      
+      html += '<br><strong>Peer Distribution:</strong><br>';
+      
+      // Region distribution
+      const regionCounts = new Map();
+      peerSegmentMap.forEach(({peer}) => {
+        const region = peer.region || 'unknown';
+        regionCounts.set(region, (regionCounts.get(region) || 0) + 1);
+      });
+      
+      regionCounts.forEach((count, region) => {
+        html += `${region}: ${count} peers<br>`;
+      });
+      
+      html += '</div>';
+      statsContent.innerHTML = html;
+      document.getElementById('segmentStats').style.display = 'block';
+    }
+    
+    function updateNetworkGraph(peers, segment) {
+      const container = document.querySelector('.graph-section');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      // Remove existing peer nodes
+      nodes = nodes.filter(n => n.type !== 'peer');
+      links = links.filter(l => l.type !== 'peer-connection');
+      
+      // Add peer nodes
+      peers.forEach(peer => {
+        const regionPos = regionPositions[peer.region] || { x: 0.5, y: 0.5 };
+        
+        // Add some randomness around the region center
+        const offsetX = (Math.random() - 0.5) * 0.15 * width;
+        const offsetY = (Math.random() - 0.5) * 0.15 * height;
+        
+        const peerNode = {
+          id: peer.peerId,
+          type: 'peer',
+          subtype: 'has-segment',
+          x: width * regionPos.x + offsetX,
+          y: height * regionPos.y + offsetY,
+          label: peer.peerId.split('-').pop(),
+          region: peer.region,
+          rtt: peer.rtt || 50,
+          bandwidth: peer.bandwidth || 'unknown',
+          hasSegment: true,
+          segmentName: segment
+        };
+        
+        nodes.push(peerNode);
+        
+        // Connect peer to regional edge server
+        const edgeId = `edge-${peer.region}`;
+        if (nodes.find(n => n.id === edgeId)) {
+          links.push({
+            source: edgeId,
+            target: peer.peerId,
+            type: 'peer-connection',
+            hasSegment: true
+          });
+        }
+      });
+      
+      updateGraph();
+    }
+    
+    function updateNetworkGraphWithAllPeers(allPeers) {
+      const container = document.querySelector('.graph-section');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      // Remove existing peer nodes
+      nodes = nodes.filter(n => n.type !== 'peer');
+      links = links.filter(l => l.type !== 'peer-connection');
+      
+      // Add all peer nodes
+      allPeers.forEach(peer => {
+        const regionPos = regionPositions[peer.region] || { x: 0.5, y: 0.5 };
+        
+        // Add some randomness around the region center
+        const offsetX = (Math.random() - 0.5) * 0.15 * width;
+        const offsetY = (Math.random() - 0.5) * 0.15 * height;
+        
+        const peerNode = {
+          id: peer.peerId,
+          type: 'peer',
+          subtype: peer.segments.length > 0 ? 'has-segment' : 'no-segment',
+          x: width * regionPos.x + offsetX,
+          y: height * regionPos.y + offsetY,
+          label: peer.peerId.split('-').pop(),
+          region: peer.region,
+          rtt: peer.rtt || 50,
+          bandwidth: peer.bandwidth || 'unknown',
+          segments: peer.segments,
+          segmentCount: peer.segments.length,
+          isSeedPeer: peer.isSeedPeer || false,
+          connectedPeers: peer.connectedPeers || [],
+          maxConnections: peer.maxConnections || 0,
+          uploadSlots: peer.uploadSlots || 0
+        };
+        
+        nodes.push(peerNode);
+        
+        // ONLY seed peers connect to edge servers (realistic P2P)
+        if (peer.isSeedPeer) {
+          const edgeId = `edge-${peer.region}`;
+          if (nodes.find(n => n.id === edgeId)) {
+            links.push({
+              source: edgeId,
+              target: peer.peerId,
+              type: 'seed-connection',
+              hasSegment: peer.segments.length > 0
+            });
+          }
+        }
+      });
+      
+      // Add P2P connections between peers (realistic mesh topology)
+      allPeers.forEach(peer => {
+        if (peer.connectedPeers && peer.connectedPeers.length > 0) {
+          peer.connectedPeers.forEach(connectedPeerId => {
+            // Only add each connection once (avoid duplicates)
+            if (peer.peerId < connectedPeerId) {
+              const sourceNode = nodes.find(n => n.id === peer.peerId);
+              const targetNode = nodes.find(n => n.id === connectedPeerId);
+              
+              if (sourceNode && targetNode) {
+                links.push({
+                  source: peer.peerId,
+                  target: connectedPeerId,
+                  type: 'p2p-connection',
+                  hasSegment: sourceNode.segments.length > 0 && targetNode.segments.length > 0
+                });
+              }
+            }
+          });
+        }
+      });
+      
+      updateGraph();
+    }
+    
+    function updateGraph() {
+      // Update simulation
+      if (simulation) {
+        simulation.stop();
+      }
+      
+      simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(400, 300))
+        .force('collision', d3.forceCollide().radius(15));
+      
+      // Update links
+      const link = g.selectAll('.link')
+        .data(links, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+      
+      link.exit().remove();
+      
+      link.enter()
+        .append('line')
+        .attr('class', d => {
+          let classes = 'link';
+          if (d.type === 'p2p-connection') classes += ' p2p-connection';
+          else if (d.type === 'seed-connection') classes += ' seed-connection';
+          else if (d.hasSegment) classes += ' has-segment';
+          return classes;
+        })
+        .merge(link);
+      
+      // Update nodes
+      const node = g.selectAll('.node-group')
+        .data(nodes, d => d.id);
+      
+      node.exit().remove();
+      
+      const nodeEnter = node.enter()
+        .append('g')
+        .attr('class', 'node-group');
+      
+      nodeEnter.append('circle')
+        .attr('class', d => {
+          let classes = `node ${d.type} ${d.subtype || ''}`;
+          if (d.type === 'peer' && d.isSeedPeer) classes += ' seed-peer';
+          return classes;
+        })
+        .attr('id', d => `node-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`)
+        .attr('r', d => {
+          if (d.type === 'origin') return 15;
+          if (d.type === 'edge') return 12;
+          if (d.type === 'peer') {
+            if (d.isSeedPeer) return 12; // Seed peers are larger
+            return Math.max(6, Math.min(10, (d.segmentCount || 1) * 2));
+          }
+          return 8;
+        })
+        .on('mouseover', showTooltip)
+        .on('mouseout', hideTooltip)
+        .on('click', selectNode);
+      
+      nodeEnter.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', d => {
+          if (d.type === 'origin') return 25;
+          if (d.type === 'edge') return 22;
+          return 18;
+        })
+        .text(d => d.label);
+      
+      // Update positions on tick
+      simulation.on('tick', () => {
+        g.selectAll('.link')
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+        
+        g.selectAll('.node-group')
+          .attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+      
+      updateGraphFilters();
+    }
+    
+    function updateGraphFilters() {
+      const showWithSegment = document.getElementById('showPeersWithSegment').checked;
+      const showWithoutSegment = document.getElementById('showPeersWithoutSegment').checked;
+      const showClusters = document.getElementById('showRegionClusters').checked;
+      const showRTT = document.getElementById('showRTTLabels').checked;
+      
+      // Filter peer nodes
+      g.selectAll('.node-group').style('display', function(d) {
+        if (d.type !== 'peer') return 'block';
+        
+        if (d.subtype === 'has-segment' && !showWithSegment) return 'none';
+        if (d.subtype === 'no-segment' && !showWithoutSegment) return 'none';
+        
+        return 'block';
+      });
+      
+      // Filter peer connections
+      g.selectAll('.link').style('display', function(d) {
+        if (d.type !== 'peer-connection') return 'block';
+        
+        const targetNode = nodes.find(n => n.id === (d.target.id || d.target));
+        if (!targetNode) return 'block';
+        
+        if (targetNode.subtype === 'has-segment' && !showWithSegment) return 'none';
+        if (targetNode.subtype === 'no-segment' && !showWithoutSegment) return 'none';
+        
+        return 'block';
+      });
+    }
+    
+    function showTooltip(event, d) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.pageX + 10) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+      
+      let content = `<strong>${d.label}</strong><br>`;
+      content += `Type: ${d.type}<br>`;
+      content += `Region: ${d.region}<br>`;
+      
+      if (d.type === 'peer') {
+        content += `RTT: ${d.rtt}ms<br>`;
+        content += `Bandwidth: ${d.bandwidth}<br>`;
+        content += `Type: ${d.isSeedPeer ? 'Seed Peer' : 'Regular Peer'}<br>`;
+        content += `Connections: ${d.connectedPeers ? d.connectedPeers.length : 0}/${d.maxConnections || 0}<br>`;
+        content += `Upload Slots: ${d.uploadSlots || 0}<br>`;
+        if (d.segments) {
+          content += `Segments: ${d.segments.length}<br>`;
+          if (d.segments.length > 0) {
+            content += `<small>${d.segments.map(s => s.split('/').pop()).join(', ')}</small>`;
+          }
+        }
+      }
+      
+      tooltip.innerHTML = content;
+    }
+    
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+    
+    function selectNode(event, d) {
+      // Clear previous selections
+      g.selectAll('.node').classed('selected', false);
+      
+      // Select clicked node
+      d3.select(this).classed('selected', true);
+      
+      // If it's a peer, load its segment in the input
+      if (d.type === 'peer' && d.segments && d.segments.length > 0) {
+        document.getElementById('seg').value = d.segments[0];
+      }
+    }
+    
+    // Initialize when page loads
+    window.addEventListener('load', initGraph);
+    window.addEventListener('resize', () => {
+      setTimeout(initGraph, 100);
+    });
+  </script>
+</body>
+</html>

@@ -45,6 +45,7 @@ func main() {
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(corsMiddleware)
 
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 
 	r.Post("/announce", func(w http.ResponseWriter, req *http.Request) {
