@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -46,7 +45,7 @@ func main() {
 		"us-east", "us-west", "us-central",
 		"eu-west", "eu-central", "eu-north",
 		"asia-pacific", "asia-southeast", "asia-northeast",
-		"canada", "brazil", "australia", "japan", "india"
+		"canada", "brazil", "australia", "japan", "india",
 	}
 
 	bandwidthTiers := []struct {
