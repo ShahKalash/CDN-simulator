@@ -83,13 +83,13 @@ func (sm *SongManager) UpdateSongSegments(id string, segments []string, bitrates
 func processAudioFile(file multipart.File, header *multipart.FileHeader, title, artist string) (*Song, error) {
 	// Create unique song ID
 	songID := fmt.Sprintf("song_%d", time.Now().UnixNano())
-	
+
 	// Create song directory
 	songDir := filepath.Join("assets", "songs", songID)
 	if err := os.MkdirAll(songDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create song directory: %w", err)
 	}
-	
+
 	// Save uploaded file
 	uploadPath := filepath.Join(songDir, header.Filename)
 	dst, err := os.Create(uploadPath)
@@ -97,11 +97,11 @@ func processAudioFile(file multipart.File, header *multipart.FileHeader, title, 
 		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
 	defer dst.Close()
-	
+
 	if _, err := io.Copy(dst, file); err != nil {
 		return nil, fmt.Errorf("failed to save file: %w", err)
 	}
-	
+
 	// Create song object
 	song := &Song{
 		ID:         songID,
@@ -110,7 +110,7 @@ func processAudioFile(file multipart.File, header *multipart.FileHeader, title, 
 		UploadTime: time.Now(),
 		Status:     "processing",
 	}
-	
+
 	// Process audio in background
 	go func() {
 		if err := processAudioToHLS(uploadPath, songDir, songID); err != nil {
@@ -118,39 +118,40 @@ func processAudioFile(file multipart.File, header *multipart.FileHeader, title, 
 			songManager.UpdateSongStatus(songID, "error")
 			return
 		}
-		
+
 		// Generate segments list
 		segments := []string{}
 		for i := 0; i < 8; i++ { // Assuming 8 segments
 			segments = append(segments, fmt.Sprintf("segment%03d.ts", i))
 		}
-		
+
 		bitrates := []string{"128k", "192k"}
 		songManager.UpdateSongSegments(songID, segments, bitrates)
-		
+
 		// Update network topology with new segments
 		updateNetworkTopology(songID, segments)
-		
+
 		log.Printf("✅ Song %s processed successfully", songID)
 	}()
-	
+
 	return song, nil
 }
 
 func processAudioToHLS(inputPath, outputDir, songID string) error {
 	bitrates := []string{"128k", "192k"}
-	
+
 	for _, bitrate := range bitrates {
 		bitrateDir := filepath.Join(outputDir, bitrate)
 		if err := os.MkdirAll(bitrateDir, 0755); err != nil {
 			return fmt.Errorf("failed to create bitrate directory: %w", err)
 		}
-		
+
 		playlistFile := filepath.Join(bitrateDir, "playlist.m3u8")
 		segmentPattern := filepath.Join(bitrateDir, "segment%03d.ts")
-		
+
 		// Use FFmpeg to create HLS segments
-		cmd := exec.Command("ffmpeg-portable/ffmpeg-8.0-essentials_build/bin/ffmpeg.exe",
+		// It is expected that ffmpeg is installed in the system which is running this.
+		cmd := exec.Command("ffmpeg",
 			"-i", inputPath,
 			"-c:a", "aac",
 			"-b:a", bitrate,
@@ -159,12 +160,12 @@ func processAudioToHLS(inputPath, outputDir, songID string) error {
 			"-hls_segment_filename", segmentPattern,
 			playlistFile,
 		)
-		
+
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("FFmpeg failed for %s: %w", bitrate, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -175,7 +176,7 @@ func updateNetworkTopology(songID string, segments []string) {
 			"nodeId":    "origin-1",
 			"segmentId": segment,
 		}
-		
+
 		jsonData, _ := json.Marshal(reqBody)
 		resp, err := http.Post("http://localhost:8092/add-segment", "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
@@ -184,7 +185,7 @@ func updateNetworkTopology(songID string, segments []string) {
 			resp.Body.Close()
 		}
 	}
-	
+
 	// Distribute some segments to edge servers
 	edgeServers := []string{"edge-1", "edge-2", "edge-3", "edge-4"}
 	for i, segment := range segments {
@@ -194,7 +195,7 @@ func updateNetworkTopology(songID string, segments []string) {
 				"nodeId":    edgeID,
 				"segmentId": segment,
 			}
-			
+
 			jsonData, _ := json.Marshal(reqBody)
 			resp, err := http.Post("http://localhost:8092/add-segment", "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
@@ -221,7 +222,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	port := getenv("PORT", "8093")
-	
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -229,20 +230,20 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(corsMiddleware)
-	
+
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
-	
+
 	// Get all songs
 	r.Get("/songs", func(w http.ResponseWriter, r *http.Request) {
 		songs := songManager.GetAllSongs()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(songs)
 	})
-	
+
 	// Get specific song
 	r.Get("/songs/{id}", func(w http.ResponseWriter, r *http.Request) {
 		songID := chi.URLParam(r, "id")
@@ -254,7 +255,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(song)
 	})
-	
+
 	// Upload new song
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
 		// Parse multipart form
@@ -263,7 +264,7 @@ func main() {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Get form values
 		title := r.FormValue("title")
 		artist := r.FormValue("artist")
@@ -271,7 +272,7 @@ func main() {
 			http.Error(w, "Title and artist are required", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Get uploaded file
 		file, header, err := r.FormFile("audio")
 		if err != nil {
@@ -279,33 +280,33 @@ func main() {
 			return
 		}
 		defer file.Close()
-		
+
 		// Check file type
 		if !strings.HasSuffix(strings.ToLower(header.Filename), ".mp3") &&
-		   !strings.HasSuffix(strings.ToLower(header.Filename), ".wav") &&
-		   !strings.HasSuffix(strings.ToLower(header.Filename), ".m4a") {
+			!strings.HasSuffix(strings.ToLower(header.Filename), ".wav") &&
+			!strings.HasSuffix(strings.ToLower(header.Filename), ".m4a") {
 			http.Error(w, "Only MP3, WAV, and M4A files are supported", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Process the file
 		song, err := processAudioFile(file, header, title, artist)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to process audio: %v", err), http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Add to song manager
 		songManager.AddSong(song)
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(song)
 	})
-	
+
 	// Serve HLS files
 	r.Handle("/hls/*", http.StripPrefix("/hls/", http.FileServer(http.Dir("assets/songs/"))))
-	
+
 	log.Printf("Song Manager service listening on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
