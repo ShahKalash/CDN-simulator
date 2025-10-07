@@ -703,7 +703,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        clientId: selectedClient.id,
+                        fromNode: selectedClient.id,
                         segmentId: segment
                     })
                 });

@@ -402,6 +402,29 @@ func main() {
 		
 		w.WriteHeader(http.StatusOK)
 	})
+
+	// Seed a few peers with a given segment for demo (to show P2P paths)
+	r.Post("/seed-demo", func(w http.ResponseWriter, r *http.Request) {
+		var data struct{ SegmentID string `json:"segmentId"` }
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if data.SegmentID == "" {
+			http.Error(w, "segmentId required", http.StatusBadRequest)
+			return
+		}
+		topology.mu.Lock()
+		// pick some peers deterministically
+		for i := 1; i <= 5; i++ {
+			id := fmt.Sprintf("peer-%d", i)
+			if node, ok := topology.nodes[id]; ok && node.Type == "peer" {
+				node.Storage[data.SegmentID] = true
+			}
+		}
+		topology.mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	})
 	
 	log.Printf("Network topology service listening on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))

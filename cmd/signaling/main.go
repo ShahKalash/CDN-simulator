@@ -11,11 +11,11 @@ import (
 )
 
 type Message struct {
-	Type string         `json:"type"`
-	Room string         `json:"room"`
-	From string         `json:"from"`
-	To   string         `json:"to"`
-	Data map[string]any `json:"data"`
+	Type string                 `json:"type"`
+	Room string                 `json:"room"`
+	From string                 `json:"from"`
+	To   string                 `json:"to"`
+	Data map[string]interface{} `json:"data"`
 }
 
 type Client struct {
@@ -32,10 +32,7 @@ type Hub struct {
 }
 
 func NewHub() *Hub {
-	return &Hub{
-		clients: make(map[string]*Client),
-		rooms:   make(map[string]map[string]*Client),
-	}
+	return &Hub{clients: map[string]*Client{}, rooms: map[string]map[string]*Client{}}
 }
 
 func (h *Hub) Join(c *Client, room string) {
