@@ -66,6 +66,16 @@ services:
       - "8091:8091"
     command: ["/app/signaling"]
 
+  topology:
+    build:
+      context: .
+      dockerfile: deploy/topology.Dockerfile
+    environment:
+      - PORT=8092
+    ports:
+      - "8092:8092"
+    command: ["/app/topology"]
+
 volumes:
   minio_data: {}
   edge_cache: {}
