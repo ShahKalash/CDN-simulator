@@ -62,8 +62,37 @@ if [[ "$PEER_COUNT" -eq 0 ]]; then
   echo "   Path: $PEER_NAME → edge-server → origin-server"
   echo "   Estimated Latency: ~150ms"
   echo ""
-  echo "💡 To populate segments, peers need to announce them via:"
-  echo "   curl -X POST http://tracker:7070/announce -H 'Content-Type: application/json' -d '{...}'"
+  
+  # Fetch from origin (simulate by creating segment and storing in peer)
+  echo "📥 Step 5: Fetching from origin server..."
+  echo "   Simulating origin fetch (creating segment data)..."
+  
+  # Generate a dummy segment payload
+  SEG_PAYLOAD=$(printf "origin-segment-%s-data" "$SEGMENT_ID" | base64 -w 0 2>/dev/null || printf "origin-segment-%s-data" "$SEGMENT_ID" | base64)
+  
+  # Store directly in peer's cache (simulating origin → peer transfer)
+  STORE_RESULT=$(docker run --rm --network micro-net curlimages/curl -s -X POST "http://${PEER_NAME}:8080/segments" \
+    -H 'Content-Type: application/json' \
+    -d "{\"id\":\"${SEGMENT_ID}\",\"payload\":\"${SEG_PAYLOAD}\"}" 2>/dev/null || echo "")
+  
+  # Verify it was stored
+  sleep 1
+  VERIFY_RESULT=$(docker exec "$PEER_NAME" wget -qO- "http://localhost:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+  
+  if echo "$VERIFY_RESULT" | grep -q '"id"'; then
+    SEG_SIZE=$(echo "$VERIFY_RESULT" | wc -c)
+    echo "   ✅ Successfully fetched segment from origin"
+    echo "   Segment size: $SEG_SIZE bytes"
+    echo "   ✅ Segment cached in $PEER_NAME"
+    echo ""
+    echo "💡 Segment is now in peer cache. Peer should announce it to tracker on next heartbeat."
+  else
+    echo "   ❌ Failed to fetch/store segment from origin"
+  fi
+  echo ""
+  echo "=========================================="
+  echo "✅ Simulation Complete"
+  echo "=========================================="
   exit 0
 fi
 
@@ -126,31 +155,58 @@ echo ""
 # Try to fetch segment from best peer
 echo "📥 Step 5: Attempting to fetch segment..."
 
-# Only attempt direct fetch if it's a direct neighbor (1 hop)
-if [[ "$IS_NEIGHBOR" == "true" ]]; then
-  BEST_PEER_IP=$(docker inspect "$BEST_PEER" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
-  
-  if [[ -n "$BEST_PEER_IP" ]]; then
+BEST_PEER_IP=$(docker inspect "$BEST_PEER" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+
+if [[ -n "$BEST_PEER_IP" ]]; then
+  if [[ "$IS_NEIGHBOR" == "true" ]]; then
     echo "   Connecting to $BEST_PEER at $BEST_PEER_IP:8080 (direct neighbor)..."
-    # Use timeout to prevent hanging
-    FETCH_RESPONSE=$(timeout 3 docker exec "$PEER_NAME" wget -qO- --timeout=2 "http://${BEST_PEER_IP}:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+  else
+    echo "   Connecting to $BEST_PEER at $BEST_PEER_IP:8080 (via $HOP_COUNT hops)..."
+    echo "   Note: Attempting direct fetch (peers on same network can reach each other)"
+  fi
+  
+  # Use timeout to prevent hanging
+  FETCH_START=$(date +%s)
+  FETCH_RESPONSE=$(timeout 5 docker exec "$PEER_NAME" wget -qO- --timeout=4 "http://${BEST_PEER_IP}:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+  FETCH_END=$(date +%s)
+  FETCH_TIME=$((FETCH_END - FETCH_START))
+  
+  if [[ -n "$FETCH_RESPONSE" ]] && [[ "$FETCH_RESPONSE" != "null" ]] && echo "$FETCH_RESPONSE" | grep -q '"id"'; then
+    SEG_SIZE=$(echo "$FETCH_RESPONSE" | wc -c)
+    echo "   ✅ Successfully fetched segment from $BEST_PEER"
+    echo "   Segment size: $SEG_SIZE bytes"
+    echo "   Fetch time: ${FETCH_TIME}s"
     
-    if [[ -n "$FETCH_RESPONSE" ]] && [[ "$FETCH_RESPONSE" != "null" ]]; then
-      SEG_SIZE=$(echo "$FETCH_RESPONSE" | wc -c)
-      echo "   ✅ Successfully fetched segment from $BEST_PEER"
-      echo "   Segment size: $SEG_SIZE bytes"
+    # Store the segment in the requesting peer's cache
+    echo "   💾 Storing segment in $PEER_NAME's cache..."
+    PAYLOAD_B64=$(echo "$FETCH_RESPONSE" | grep -o '"payload":"[^"]*"' | cut -d'"' -f4)
+    if [[ -n "$PAYLOAD_B64" ]]; then
+      # Use docker run with curl to POST the segment
+      STORE_RESULT=$(docker run --rm --network micro-net curlimages/curl -s -X POST "http://${PEER_NAME}:8080/segments" \
+        -H 'Content-Type: application/json' \
+        -d "{\"id\":\"${SEGMENT_ID}\",\"payload\":\"${PAYLOAD_B64}\"}" 2>/dev/null || echo "")
+      
+      # Verify it was stored
+      sleep 1
+      VERIFY_RESULT=$(docker exec "$PEER_NAME" wget -qO- "http://localhost:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+      
+      if echo "$VERIFY_RESULT" | grep -q '"id"'; then
+        echo "   ✅ Segment cached in $PEER_NAME"
+      else
+        echo "   ⚠️  Failed to cache segment in $PEER_NAME"
+      fi
     else
-      echo "   ⚠️  Segment not found in $BEST_PEER's cache or connection failed"
+      echo "   ⚠️  Could not extract payload to cache"
     fi
   else
-    echo "   ⚠️  Could not determine IP for $BEST_PEER"
+    echo "   ❌ Failed to fetch segment from $BEST_PEER"
+    if [[ "$IS_NEIGHBOR" != "true" ]]; then
+      echo "   Note: Multi-hop fetch may require relay functionality"
+      echo "   Routing path: $ROUTING_PATH"
+    fi
   fi
 else
-  # Multi-hop scenario - peers don't implement HTTP relaying yet
-  echo "   ℹ️  Multi-hop routing detected ($HOP_COUNT hops)"
-  echo "   Note: Direct fetch requires relay functionality between peers"
-  echo "   Routing path would be: $ROUTING_PATH"
-  echo "   In a full implementation, each peer would relay the request along the path"
+  echo "   ⚠️  Could not determine IP for $BEST_PEER"
 fi
 echo ""
 
