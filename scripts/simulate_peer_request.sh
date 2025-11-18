@@ -125,19 +125,32 @@ echo ""
 
 # Try to fetch segment from best peer
 echo "📥 Step 5: Attempting to fetch segment..."
-BEST_PEER_IP=$(docker inspect "$BEST_PEER" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
 
-if [[ -n "$BEST_PEER_IP" ]]; then
-  FETCH_RESPONSE=$(docker exec "$PEER_NAME" wget -qO- "http://${BEST_PEER_IP}:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+# Only attempt direct fetch if it's a direct neighbor (1 hop)
+if [[ "$IS_NEIGHBOR" == "true" ]]; then
+  BEST_PEER_IP=$(docker inspect "$BEST_PEER" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
   
-  if [[ -n "$FETCH_RESPONSE" ]]; then
-    echo "   ✅ Successfully fetched segment from $BEST_PEER"
-    echo "   Segment size: $(echo "$FETCH_RESPONSE" | wc -c) bytes"
+  if [[ -n "$BEST_PEER_IP" ]]; then
+    echo "   Connecting to $BEST_PEER at $BEST_PEER_IP:8080 (direct neighbor)..."
+    # Use timeout to prevent hanging
+    FETCH_RESPONSE=$(timeout 3 docker exec "$PEER_NAME" wget -qO- --timeout=2 "http://${BEST_PEER_IP}:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
+    
+    if [[ -n "$FETCH_RESPONSE" ]] && [[ "$FETCH_RESPONSE" != "null" ]]; then
+      SEG_SIZE=$(echo "$FETCH_RESPONSE" | wc -c)
+      echo "   ✅ Successfully fetched segment from $BEST_PEER"
+      echo "   Segment size: $SEG_SIZE bytes"
+    else
+      echo "   ⚠️  Segment not found in $BEST_PEER's cache or connection failed"
+    fi
   else
-    echo "   ⚠️  Segment not found in $BEST_PEER's cache (may need to be uploaded first)"
+    echo "   ⚠️  Could not determine IP for $BEST_PEER"
   fi
 else
-  echo "   ⚠️  Could not determine IP for $BEST_PEER"
+  # Multi-hop scenario - peers don't implement HTTP relaying yet
+  echo "   ℹ️  Multi-hop routing detected ($HOP_COUNT hops)"
+  echo "   Note: Direct fetch requires relay functionality between peers"
+  echo "   Routing path would be: $ROUTING_PATH"
+  echo "   In a full implementation, each peer would relay the request along the path"
 fi
 echo ""
 
