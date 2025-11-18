@@ -1,0 +1,718 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CDN Network Graph Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+    
+    .container {
+      display: flex;
+      gap: 20px;
+      height: calc(100vh - 40px);
+    }
+    
+    .controls {
+      width: 300px;
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    
+    .graph-container {
+      flex: 1;
+      background: #111;
+      border-radius: 10px;
+      border: 1px solid #333;
+      position: relative;
+    }
+    
+    .node {
+      cursor: pointer;
+      stroke-width: 2px;
+    }
+    
+    .node.origin { fill: #ff4444; stroke: #ff6666; }
+    .node.edge { fill: #4444ff; stroke: #6666ff; }
+    .node.peer { fill: #44ff44; stroke: #66ff66; }
+    .node.client { fill: #ffff44; stroke: #ffff66; }
+    .node.selected { stroke: #ffffff; stroke-width: 4px; }
+    
+    .link {
+      stroke: #666;
+      stroke-width: 1px;
+      fill: none;
+    }
+    
+    .link.active {
+      stroke: #00ff00;
+      stroke-width: 3px;
+      animation: pulse 1s infinite;
+    }
+    
+    .link.p2p { stroke: #44ff44; }
+    .link.edge { stroke: #4444ff; }
+    .link.origin { stroke: #ff4444; }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .node-label {
+      font-size: 10px;
+      fill: #ffffff;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+    
+    .region-label {
+      font-size: 14px;
+      font-weight: bold;
+      fill: #cccccc;
+      text-anchor: middle;
+    }
+    
+    .legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #333;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+    
+    .legend-color {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 10px;
+      border: 2px solid #666;
+    }
+    
+    .stats {
+      margin-top: 20px;
+      padding: 15px;
+      background: #222;
+      border-radius: 5px;
+      border: 1px solid #333;
+    }
+    
+    .stat-item {
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 3px;
+    }
+    
+    button {
+      background: #0066cc;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #0088ff;
+    }
+    
+    .routing-info {
+      margin-top: 15px;
+      padding: 10px;
+      background: #2a2a2a;
+      border-radius: 5px;
+      border-left: 4px solid #00ff00;
+    }
+    
+    .tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #666;
+      pointer-events: none;
+      font-size: 12px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌐 CDN Network Graph Visualization</h1>
+  
+  <div class="container">
+    <div class="controls">
+      <h3>🎯 Request Simulation</h3>
+      <label>Segment:</label>
+      <select id="segmentSelect">
+        <option value="segment000.ts">Segment 000 (Most Popular)</option>
+        <option value="segment001.ts">Segment 001</option>
+        <option value="segment002.ts">Segment 002</option>
+        <option value="segment003.ts">Segment 003</option>
+        <option value="segment004.ts">Segment 004</option>
+        <option value="segment005.ts">Segment 005</option>
+        <option value="segment006.ts">Segment 006</option>
+        <option value="segment007.ts">Segment 007 (Least Popular)</option>
+      </select>
+      
+      <label>Client Region:</label>
+      <select id="regionSelect">
+        <option value="us-east">US East</option>
+        <option value="us-west">US West</option>
+        <option value="eu-west">EU West</option>
+        <option value="asia-pacific">Asia Pacific</option>
+        <option value="canada">Canada</option>
+      </select>
+      
+      <button id="simulateRequest">🚀 Simulate Request</button>
+      <button id="autoSimulate">🔄 Auto Simulate</button>
+      <button id="resetGraph">🔄 Reset Graph</button>
+      
+      <div class="routing-info" id="routingInfo" style="display: none;">
+        <h4>📡 Routing Decision</h4>
+        <div id="routingDetails"></div>
+      </div>
+      
+      <div class="stats">
+        <h4>📊 Network Stats</h4>
+        <div class="stat-item">
+          <span>Total Peers:</span>
+          <span id="totalPeers">0</span>
+        </div>
+        <div class="stat-item">
+          <span>Active Peers:</span>
+          <span id="activePeers">0</span>
+        </div>
+        <div class="stat-item">
+          <span>P2P Requests:</span>
+          <span id="p2pRequests">0</span>
+        </div>
+        <div class="stat-item">
+          <span>Edge Requests:</span>
+          <span id="edgeRequests">0</span>
+        </div>
+        <div class="stat-item">
+          <span>Origin Requests:</span>
+          <span id="originRequests">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="graph-container">
+      <svg id="networkGraph"></svg>
+      
+      <div class="legend">
+        <h4>🏷️ Legend</h4>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ff4444;"></div>
+          <span>Origin Server</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #4444ff;"></div>
+          <span>Edge Cache</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #44ff44;"></div>
+          <span>Peer Node</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffff44;"></div>
+          <span>Client</span>
+        </div>
+      </div>
+      
+      <div class="tooltip" id="tooltip" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    const tracker = 'http://localhost:8092';
+    let simulation, svg, g, nodes = [], links = [];
+    let stats = {
+      totalPeers: 0,
+      activePeers: 0,
+      p2pRequests: 0,
+      edgeRequests: 0,
+      originRequests: 0
+    };
+    
+    // Geographic positions for regions (normalized coordinates)
+    const regionPositions = {
+      'us-east': { x: 0.25, y: 0.4 },
+      'us-west': { x: 0.1, y: 0.45 },
+      'us-central': { x: 0.18, y: 0.42 },
+      'canada': { x: 0.2, y: 0.25 },
+      'eu-west': { x: 0.5, y: 0.3 },
+      'eu-central': { x: 0.55, y: 0.32 },
+      'eu-north': { x: 0.52, y: 0.2 },
+      'asia-pacific': { x: 0.8, y: 0.5 },
+      'asia-southeast': { x: 0.75, y: 0.6 },
+      'asia-northeast': { x: 0.85, y: 0.35 },
+      'japan': { x: 0.9, y: 0.4 },
+      'australia': { x: 0.82, y: 0.8 },
+      'brazil': { x: 0.3, y: 0.7 },
+      'india': { x: 0.7, y: 0.55 }
+    };
+
+    function initGraph() {
+      const container = document.querySelector('.graph-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      svg = d3.select('#networkGraph')
+        .attr('width', width)
+        .attr('height', height);
+        
+      g = svg.append('g');
+      
+      // Add zoom behavior
+      const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+        });
+      
+      svg.call(zoom);
+      
+      // Create initial network topology
+      createNetworkTopology(width, height);
+      
+      // Load initial peer data
+      loadPeerData();
+      
+      // Set up event listeners
+      document.getElementById('simulateRequest').onclick = simulateRequest;
+      document.getElementById('autoSimulate').onclick = toggleAutoSimulate;
+      document.getElementById('resetGraph').onclick = resetGraph;
+    }
+    
+    function createNetworkTopology(width, height) {
+      nodes = [];
+      links = [];
+      
+      // Add origin server (center)
+      nodes.push({
+        id: 'origin',
+        type: 'origin',
+        x: width * 0.5,
+        y: height * 0.5,
+        fx: width * 0.5,
+        fy: height * 0.5,
+        label: 'Origin Server',
+        region: 'global'
+      });
+      
+      // Add edge servers for each region
+      Object.keys(regionPositions).forEach(region => {
+        const pos = regionPositions[region];
+        const edgeId = `edge-${region}`;
+        
+        nodes.push({
+          id: edgeId,
+          type: 'edge',
+          x: width * pos.x,
+          y: height * pos.y,
+          fx: width * pos.x,
+          fy: height * pos.y,
+          label: `Edge (${region})`,
+          region: region
+        });
+        
+        // Connect edge to origin
+        links.push({
+          source: 'origin',
+          target: edgeId,
+          type: 'backbone'
+        });
+      });
+      
+      updateGraph();
+    }
+    
+    async function loadPeerData() {
+      try {
+        const segments = [
+          'segment000.ts',
+          'segment001.ts', 
+          'segment002.ts',
+          'segment003.ts',
+          'segment004.ts',
+          'segment005.ts',
+          'segment006.ts',
+          'segment007.ts'
+        ];
+        
+        const allPeers = new Set();
+        
+        // Get all nodes from network topology
+        const response = await fetch(`${tracker}/topology`);
+        const topology = await response.json();
+        
+        for (const segment of segments) {
+          const peers = [];
+          for (const [nodeId, node] of Object.entries(topology)) {
+            if (node.type === 'peer' && node.storage && node.storage[segment]) {
+              peers.push({
+                peerId: nodeId,
+                region: node.region,
+                rtt: Math.floor(Math.random() * 200) + 10,
+                bandwidth: 'unknown',
+                segments: Object.keys(node.storage).filter(s => node.storage[s])
+              });
+            }
+          }
+          
+          peers.forEach(peer => {
+            if (!allPeers.has(peer.peerId)) {
+              allPeers.add(peer.peerId);
+              addPeerNode(peer);
+            }
+          });
+        }
+        
+        stats.totalPeers = allPeers.size;
+        updateStats();
+        updateGraph();
+        
+      } catch (error) {
+        console.error('Error loading peer data:', error);
+      }
+    }
+    
+    function addPeerNode(peer) {
+      const container = document.querySelector('.graph-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      const regionPos = regionPositions[peer.region] || { x: 0.5, y: 0.5 };
+      
+      // Add some randomness around the region center
+      const offsetX = (Math.random() - 0.5) * 0.1 * width;
+      const offsetY = (Math.random() - 0.5) * 0.1 * height;
+      
+      const peerNode = {
+        id: peer.peerId,
+        type: 'peer',
+        x: width * regionPos.x + offsetX,
+        y: height * regionPos.y + offsetY,
+        label: peer.peerId,
+        region: peer.region,
+        rtt: peer.rtt || 50,
+        bandwidth: peer.bandwidth || 'unknown',
+        segments: []
+      };
+      
+      nodes.push(peerNode);
+      
+      // Connect peer to regional edge server
+      const edgeId = `edge-${peer.region}`;
+      if (nodes.find(n => n.id === edgeId)) {
+        links.push({
+          source: edgeId,
+          target: peer.peerId,
+          type: 'peer-connection'
+        });
+      }
+    }
+    
+    async function simulateRequest() {
+      const segment = document.getElementById('segmentSelect').value;
+      const clientRegion = document.getElementById('regionSelect').value;
+      
+      // Clear previous active states
+      d3.selectAll('.link').classed('active', false);
+      d3.selectAll('.node').classed('selected', false);
+      
+      // Add client node
+      const clientId = `client-${Date.now()}`;
+      const container = document.querySelector('.graph-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const regionPos = regionPositions[clientRegion];
+      
+      const clientNode = {
+        id: clientId,
+        type: 'client',
+        x: width * regionPos.x + (Math.random() - 0.5) * 50,
+        y: height * regionPos.y + (Math.random() - 0.5) * 50,
+        label: 'Client',
+        region: clientRegion
+      };
+      
+      nodes.push(clientNode);
+      
+      try {
+        // Query available peers
+        const response = await fetch(`${tracker}/peers?seg=${segment}&count=10&region=${clientRegion}`);
+        const peers = await response.json();
+        
+        let routingDecision;
+        
+        if (peers.length > 0) {
+          // Find best peer
+          const bestPeer = peers.reduce((best, peer) => 
+            (!best || peer.rtt < best.rtt) ? peer : best
+          );
+          
+          if (bestPeer.rtt < 50 && bestPeer.region === clientRegion) {
+            // P2P from local peer
+            routingDecision = {
+              type: 'P2P',
+              source: bestPeer.peerId,
+              reason: `Fast local peer (${bestPeer.rtt}ms)`,
+              path: [clientId, bestPeer.peerId]
+            };
+            stats.p2pRequests++;
+          } else if (bestPeer.rtt < 100) {
+            // P2P from remote peer
+            routingDecision = {
+              type: 'P2P',
+              source: bestPeer.peerId,
+              reason: `Best available peer (${bestPeer.rtt}ms)`,
+              path: [clientId, bestPeer.peerId]
+            };
+            stats.p2pRequests++;
+          } else {
+            // Edge cache
+            routingDecision = {
+              type: 'EDGE',
+              source: `edge-${clientRegion}`,
+              reason: 'Peers too slow, using edge cache',
+              path: [clientId, `edge-${clientRegion}`]
+            };
+            stats.edgeRequests++;
+          }
+        } else {
+          // No peers, check edge cache
+          const edgeAvailable = Math.random() > 0.1; // 90% cache hit rate
+          
+          if (edgeAvailable) {
+            routingDecision = {
+              type: 'EDGE',
+              source: `edge-${clientRegion}`,
+              reason: 'No peers available, serving from edge',
+              path: [clientId, `edge-${clientRegion}`]
+            };
+            stats.edgeRequests++;
+          } else {
+            routingDecision = {
+              type: 'ORIGIN',
+              source: 'origin',
+              reason: 'Cache miss, fetching from origin',
+              path: [clientId, `edge-${clientRegion}`, 'origin']
+            };
+            stats.originRequests++;
+          }
+        }
+        
+        // Visualize the routing decision
+        visualizeRouting(routingDecision, segment, clientRegion);
+        
+        // Update stats
+        updateStats();
+        
+        // Remove client after animation
+        setTimeout(() => {
+          nodes = nodes.filter(n => n.id !== clientId);
+          links = links.filter(l => l.source.id !== clientId && l.target.id !== clientId);
+          updateGraph();
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error simulating request:', error);
+      }
+      
+      updateGraph();
+    }
+    
+    function visualizeRouting(decision, segment, clientRegion) {
+      // Show routing info
+      const routingInfo = document.getElementById('routingInfo');
+      const routingDetails = document.getElementById('routingDetails');
+      
+      routingDetails.innerHTML = `
+        <div><strong>Decision:</strong> ${decision.type}</div>
+        <div><strong>Source:</strong> ${decision.source}</div>
+        <div><strong>Reason:</strong> ${decision.reason}</div>
+        <div><strong>Segment:</strong> ${segment}</div>
+        <div><strong>Client Region:</strong> ${clientRegion}</div>
+      `;
+      
+      routingInfo.style.display = 'block';
+      
+      // Highlight the routing path
+      decision.path.forEach((nodeId, index) => {
+        d3.select(`#node-${nodeId.replace(/[^a-zA-Z0-9]/g, '_')}`)
+          .classed('selected', true);
+          
+        if (index < decision.path.length - 1) {
+          const sourceId = nodeId;
+          const targetId = decision.path[index + 1];
+          
+          // Find and highlight the link
+          d3.selectAll('.link')
+            .filter(function(d) {
+              return (d.source.id === sourceId && d.target.id === targetId) ||
+                     (d.source.id === targetId && d.target.id === sourceId);
+            })
+            .classed('active', true)
+            .classed(decision.type.toLowerCase(), true);
+        }
+      });
+    }
+    
+    function updateGraph() {
+      // Update simulation
+      if (simulation) {
+        simulation.stop();
+      }
+      
+      simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(400, 300))
+        .force('collision', d3.forceCollide().radius(20));
+      
+      // Update links
+      const link = g.selectAll('.link')
+        .data(links, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+      
+      link.exit().remove();
+      
+      link.enter()
+        .append('line')
+        .attr('class', 'link')
+        .merge(link);
+      
+      // Update nodes
+      const node = g.selectAll('.node')
+        .data(nodes, d => d.id);
+      
+      node.exit().remove();
+      
+      const nodeEnter = node.enter()
+        .append('g')
+        .attr('class', 'node-group');
+      
+      nodeEnter.append('circle')
+        .attr('class', d => `node ${d.type}`)
+        .attr('id', d => `node-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`)
+        .attr('r', d => d.type === 'origin' ? 15 : d.type === 'edge' ? 12 : 8)
+        .on('mouseover', showTooltip)
+        .on('mouseout', hideTooltip);
+      
+      nodeEnter.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', d => d.type === 'origin' ? 25 : d.type === 'edge' ? 22 : 18)
+        .text(d => d.type === 'peer' ? d.id.split('-').pop() : d.label);
+      
+      // Update positions on tick
+      simulation.on('tick', () => {
+        g.selectAll('.link')
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+        
+        g.selectAll('.node-group')
+          .attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+    }
+    
+    function showTooltip(event, d) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.pageX + 10) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+      
+      let content = `<strong>${d.label}</strong><br>`;
+      content += `Type: ${d.type}<br>`;
+      content += `Region: ${d.region}<br>`;
+      
+      if (d.type === 'peer') {
+        content += `RTT: ${d.rtt}ms<br>`;
+        content += `Bandwidth: ${d.bandwidth}<br>`;
+      }
+      
+      tooltip.innerHTML = content;
+    }
+    
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+    
+    function updateStats() {
+      document.getElementById('totalPeers').textContent = stats.totalPeers;
+      document.getElementById('activePeers').textContent = nodes.filter(n => n.type === 'peer').length;
+      document.getElementById('p2pRequests').textContent = stats.p2pRequests;
+      document.getElementById('edgeRequests').textContent = stats.edgeRequests;
+      document.getElementById('originRequests').textContent = stats.originRequests;
+    }
+    
+    function resetGraph() {
+      stats = { totalPeers: 0, activePeers: 0, p2pRequests: 0, edgeRequests: 0, originRequests: 0 };
+      document.getElementById('routingInfo').style.display = 'none';
+      
+      // Clear active states
+      d3.selectAll('.link').classed('active', false);
+      d3.selectAll('.node').classed('selected', false);
+      
+      updateStats();
+    }
+    
+    let autoSimulateInterval;
+    function toggleAutoSimulate() {
+      const button = document.getElementById('autoSimulate');
+      
+      if (autoSimulateInterval) {
+        clearInterval(autoSimulateInterval);
+        autoSimulateInterval = null;
+        button.textContent = '🔄 Auto Simulate';
+      } else {
+        autoSimulateInterval = setInterval(() => {
+          // Random segment and region
+          const segments = ['segment000.ts', 'segment001.ts', 'segment002.ts', 'segment003.ts', 'segment004.ts', 'segment005.ts', 'segment006.ts', 'segment007.ts'];
+          const regions = ['us-east', 'us-west', 'eu-west', 'asia-pacific', 'canada'];
+          
+          document.getElementById('segmentSelect').value = segments[Math.floor(Math.random() * segments.length)];
+          document.getElementById('regionSelect').value = regions[Math.floor(Math.random() * regions.length)];
+          
+          simulateRequest();
+        }, 2000);
+        
+        button.textContent = '⏹️ Stop Auto';
+      }
+    }
+    
+    // Initialize when page loads
+    window.addEventListener('load', initGraph);
+    window.addEventListener('resize', () => {
+      setTimeout(initGraph, 100);
+    });
+  </script>
+</body>
+</html>

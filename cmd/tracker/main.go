@@ -35,6 +35,7 @@ func main() {
 	defer cancel()
 	service.StartReaper(ctx)
 
+<<<<<<< HEAD
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -47,6 +48,14 @@ func main() {
 		}
 		var req tracker.AnnounceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+=======
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+
+	r.Post("/announce", func(w http.ResponseWriter, req *http.Request) {
+		var body AnnounceRequest
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+>>>>>>> 19b5dca (p2p network creation, song segmentation + upload, segment distribution, simulation, visualisation)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

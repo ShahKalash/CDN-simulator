@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive CDN Network Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .control-group select, .control-group input {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+        }
+
+        .btn.success {
+            background: #28a745;
+        }
+
+        .btn.danger {
+            background: #dc3545;
+        }
+
+        .status {
+            padding: 15px 20px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            margin: 0 20px 20px 20px;
+            border-radius: 0 8px 8px 0;
+            font-weight: 500;
+        }
+
+        .status.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .network-container {
+            position: relative;
+            height: 600px;
+            background: #fafafa;
+        }
+
+        .network-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .node:hover {
+            transform: scale(1.1);
+        }
+
+        .node.selected {
+            stroke: #ff6b6b;
+            stroke-width: 4px;
+        }
+
+        .node.origin {
+            fill: #ff6b6b;
+        }
+
+        .node.edge {
+            fill: #4ecdc4;
+        }
+
+        .node.peer {
+            fill: #45b7d1;
+        }
+
+        .node.peer.has-segment {
+            fill: #96ceb4;
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+
+        .link.highlight {
+            stroke: #ff6b6b;
+            stroke-width: 4px;
+            stroke-opacity: 1;
+        }
+
+        .request-path {
+            stroke: #ff6b6b;
+            stroke-width: 6px;
+            stroke-opacity: 0.8;
+            stroke-dasharray: 10,5;
+            animation: dash 1s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -15; }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            pointer-events: none;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .stats {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .segment-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+
+        .segment-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .segment-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .segment-item:last-child {
+            border-bottom: none;
+        }
+
+        .segment-name {
+            font-weight: 500;
+        }
+
+        .segment-count {
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Interactive CDN Network</h1>
+            <p>Real-time P2P + CDN Content Delivery Simulation</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Select Client Node:</label>
+                <select id="clientSelect">
+                    <option value="">Choose a node...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Request Segment:</label>
+                <select id="segmentSelect">
+                    <option value="segment000.ts">Segment 000 (.ts)</option>
+                    <option value="segment001.ts">Segment 001 (.ts)</option>
+                    <option value="segment002.ts">Segment 002 (.ts)</option>
+                    <option value="segment003.ts">Segment 003 (.ts)</option>
+                    <option value="segment004.ts">Segment 004 (.ts)</option>
+                    <option value="segment005.ts">Segment 005 (.ts)</option>
+                    <option value="segment006.ts">Segment 006 (.ts)</option>
+                    <option value="segment007.ts">Segment 007 (.ts)</option>
+                    <option value="song_000">Song 000 (legacy)</option>
+                    <option value="song_001">Song 001 (legacy)</option>
+                    <option value="song_002">Song 002 (legacy)</option>
+                    <option value="song_003">Song 003 (legacy)</option>
+                    <option value="song_004">Song 004 (legacy)</option>
+                    <option value="song_005">Song 005 (legacy)</option>
+                    <option value="song_006">Song 006 (legacy)</option>
+                    <option value="song_007">Song 007 (legacy)</option>
+                </select>
+            </div>
+
+            <button id="simulateBtn" class="btn">🚀 Simulate Request</button>
+            <button id="resetBtn" class="btn secondary">🔄 Reset</button>
+            <button id="autoBtn" class="btn success">⚡ Auto Simulate</button>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div class="network-container">
+            <svg class="network-svg"></svg>
+            <div class="legend">
+                <h4>Node Types</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>Origin Server</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ecdc4;"></div>
+                    <span>Edge Server</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #45b7d1;"></div>
+                    <span>Peer (No Segment)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #96ceb4;"></div>
+                    <span>Peer (Has Segment)</span>
+                </div>
+            </div>
+
+            <div class="segment-info" id="segmentInfo" style="display: none;">
+                <h4>Segment Distribution</h4>
+                <div class="segment-list" id="segmentList"></div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalNodes">0</div>
+                <div class="stat-label">Total Nodes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalPeers">0</div>
+                <div class="stat-label">Peer Nodes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalSegments">0</div>
+                <div class="stat-label">Total Segments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="p2pRequests">0</div>
+                <div class="stat-label">P2P Requests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="edgeRequests">0</div>
+                <div class="stat-label">Edge Requests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="originRequests">0</div>
+                <div class="stat-label">Origin Requests</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8092';
+        let networkData = {};
+        let simulation = null;
+        let svg = null;
+        let g = null;
+        let nodes = [];
+        let links = [];
+        let selectedClient = null;
+        let currentRequest = null;
+        let autoSimulateInterval = null;
+        let stats = {
+            totalNodes: 0,
+            totalPeers: 0,
+            totalSegments: 0,
+            p2pRequests: 0,
+            edgeRequests: 0,
+            originRequests: 0
+        };
+
+        // Initialize the visualization
+        async function init() {
+            await loadNetworkData();
+            setupVisualization();
+            updateStats();
+            setupEventListeners();
+        }
+
+        async function loadNetworkData() {
+            try {
+                const response = await fetch(`${API_BASE}/topology`);
+                networkData = await response.json();
+                console.log('Network data loaded:', networkData);
+            } catch (error) {
+                console.error('Failed to load network data:', error);
+                showStatus('Failed to load network data', 'error');
+            }
+        }
+
+        function setupVisualization() {
+            svg = d3.select('.network-svg');
+            g = svg.append('g');
+
+            // Set up zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Create nodes and links
+            createNodesAndLinks();
+            updateVisualization();
+        }
+
+        function createNodesAndLinks() {
+            nodes = [];
+            links = [];
+
+            // Add all nodes
+            Object.entries(networkData).forEach(([nodeId, nodeData]) => {
+                const node = {
+                    id: nodeId,
+                    type: nodeData.type,
+                    region: nodeData.region,
+                    storage: nodeData.storage || {},
+                    connections: nodeData.connections || [],
+                    x: Math.random() * 800 + 100,
+                    y: Math.random() * 400 + 100
+                };
+                nodes.push(node);
+
+                // Add connections as links
+                nodeData.connections?.forEach(connectedId => {
+                    if (networkData[connectedId]) {
+                        links.push({
+                            source: nodeId,
+                            target: connectedId,
+                            type: 'connection'
+                        });
+                    }
+                });
+            });
+
+            // Populate client select
+            const clientSelect = document.getElementById('clientSelect');
+            clientSelect.innerHTML = '<option value="">Choose a node...</option>';
+            
+            nodes.forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = `${node.id} (${node.type})`;
+                clientSelect.appendChild(option);
+            });
+        }
+
+        function updateVisualization() {
+            // Clear existing elements
+            g.selectAll('.link').remove();
+            g.selectAll('.node').remove();
+
+            // Create links
+            const linkElements = g.selectAll('.link')
+                .data(links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('x1', d => nodes.find(n => n.id === d.source)?.x || 0)
+                .attr('y1', d => nodes.find(n => n.id === d.source)?.y || 0)
+                .attr('x2', d => nodes.find(n => n.id === d.target)?.x || 0)
+                .attr('y2', d => nodes.find(n => n.id === d.target)?.y || 0);
+
+            // Create nodes
+            const nodeElements = g.selectAll('.node')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('class', d => {
+                    let classes = 'node';
+                    if (d.type === 'origin') classes += ' origin';
+                    else if (d.type === 'edge') classes += ' edge';
+                    else if (d.type === 'peer') {
+                        classes += ' peer';
+                        if (Object.keys(d.storage).length > 0) classes += ' has-segment';
+                    }
+                    return classes;
+                })
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', d => {
+                    if (d.type === 'origin') return 20;
+                    if (d.type === 'edge') return 15;
+                    return 8;
+                })
+                .on('click', (event, d) => {
+                    selectNode(d);
+                })
+                .on('mouseover', (event, d) => {
+                    // Add delay to prevent flickering
+                    setTimeout(() => {
+                        showTooltip(event, d);
+                    }, 200);
+                })
+                .on('mouseout', () => {
+                    // Add delay to prevent flickering
+                    setTimeout(() => {
+                        hideTooltip();
+                    }, 100);
+                });
+
+            // Add labels
+            g.selectAll('.label').remove();
+            g.selectAll('.label')
+                .data(nodes)
+                .enter().append('text')
+                .attr('class', 'label')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y + 25)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '10px')
+                .attr('fill', '#666')
+                .text(d => d.id);
+
+            // Run force simulation with better layout
+            if (simulation) simulation.stop();
+            
+            // Position nodes strategically
+            nodes.forEach(node => {
+                if (node.type === 'origin') {
+                    node.x = 400;
+                    node.y = 100;
+                } else if (node.type === 'edge') {
+                    const edgeIndex = parseInt(node.id.split('-')[1]) - 1;
+                    const angle = (edgeIndex / 4) * 2 * Math.PI;
+                    node.x = 400 + Math.cos(angle) * 150;
+                    node.y = 300 + Math.sin(angle) * 100;
+                } else {
+                    // Peers in a circle around edges
+                    const peerIndex = parseInt(node.id.split('-')[1]) - 1;
+                    const angle = (peerIndex / 50) * 2 * Math.PI;
+                    node.x = 400 + Math.cos(angle) * (200 + Math.random() * 100);
+                    node.y = 300 + Math.sin(angle) * (100 + Math.random() * 50);
+                }
+            });
+            
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(d => {
+                    if (d.source.type === 'origin' || d.target.type === 'origin') return 200;
+                    if (d.source.type === 'edge' || d.target.type === 'edge') return 120;
+                    return 80;
+                }))
+                .force('charge', d3.forceManyBody().strength(d => {
+                    if (d.type === 'origin') return -1000;
+                    if (d.type === 'edge') return -500;
+                    return -200;
+                }))
+                .force('center', d3.forceCenter(400, 300))
+                .force('collision', d3.forceCollide().radius(d => {
+                    if (d.type === 'origin') return 25;
+                    if (d.type === 'edge') return 20;
+                    return 12;
+                }))
+                .on('tick', () => {
+                    linkElements
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+
+                    nodeElements
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+
+                    g.selectAll('.label')
+                        .attr('x', d => d.x)
+                        .attr('y', d => d.y + 25);
+                });
+        }
+
+        function selectNode(node) {
+            // Remove previous selection
+            g.selectAll('.node.selected').classed('selected', false);
+            
+            // Select new node
+            g.selectAll('.node')
+                .filter(d => d.id === node.id)
+                .classed('selected', true);
+
+            selectedClient = node;
+            document.getElementById('clientSelect').value = node.id;
+            
+            // Show segment info
+            showSegmentInfo(node);
+        }
+
+        function showSegmentInfo(node) {
+            const segmentInfo = document.getElementById('segmentInfo');
+            const segmentList = document.getElementById('segmentList');
+            
+            if (Object.keys(node.storage).length === 0) {
+                segmentInfo.style.display = 'none';
+                return;
+            }
+
+            segmentInfo.style.display = 'block';
+            segmentList.innerHTML = '';
+
+            const segments = ['segment000.ts', 'segment001.ts', 'segment002.ts', 'segment003.ts', 
+                            'segment004.ts', 'segment005.ts', 'segment006.ts', 'segment007.ts'];
+            const songSegments = ['song_000', 'song_001', 'song_002', 'song_003', 
+                                'song_004', 'song_005', 'song_006', 'song_007'];
+
+            // Show .ts segments
+            segments.forEach(segment => {
+                const hasSegment = node.storage[segment];
+                const segmentItem = document.createElement('div');
+                segmentItem.className = 'segment-item';
+                segmentItem.innerHTML = `
+                    <span class="segment-name">${segment}</span>
+                    <span class="segment-count">${hasSegment ? '✓' : '✗'}</span>
+                `;
+                segmentList.appendChild(segmentItem);
+            });
+
+            // Show song_ segments if any exist
+            const hasSongSegments = songSegments.some(segment => node.storage[segment]);
+            if (hasSongSegments) {
+                const separator = document.createElement('div');
+                separator.className = 'segment-separator';
+                separator.innerHTML = '<hr style="margin: 10px 0;"><strong>Legacy Format:</strong>';
+                segmentList.appendChild(separator);
+
+                songSegments.forEach(segment => {
+                    const hasSegment = node.storage[segment];
+                    const segmentItem = document.createElement('div');
+                    segmentItem.className = 'segment-item';
+                    segmentItem.innerHTML = `
+                        <span class="segment-name">${segment}</span>
+                        <span class="segment-count">${hasSegment ? '✓' : '✗'}</span>
+                    `;
+                    segmentList.appendChild(segmentItem);
+                });
+            }
+        }
+
+        async function simulateRequest() {
+            if (!selectedClient) {
+                showStatus('Please select a client node first', 'error');
+                return;
+            }
+
+            const segment = document.getElementById('segmentSelect').value;
+            if (!segment) {
+                showStatus('Please select a segment to request', 'error');
+                return;
+            }
+
+            showStatus(`Simulating request for ${segment} from ${selectedClient.id}...`, 'success');
+
+            try {
+                const response = await fetch(`${API_BASE}/request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: selectedClient.id,
+                        segmentId: segment
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Request result:', result);
+
+                if (result.success) {
+                    showRequestPath(result);
+                    updateStats(result.source);
+                    showStatus(`✅ Request successful! Source: ${result.source}, Latency: ${result.latency}ms, Hops: ${result.hops}`, 'success');
+                } else {
+                    showStatus(`❌ Request failed: ${result.source}`, 'error');
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                showStatus('Request failed: ' + error.message, 'error');
+            }
+        }
+
+        function showRequestPath(result) {
+            // Clear previous paths
+            g.selectAll('.request-path').remove();
+
+            if (result.path && result.path.length > 1) {
+                const pathLinks = [];
+                for (let i = 0; i < result.path.length - 1; i++) {
+                    pathLinks.push({
+                        source: result.path[i],
+                        target: result.path[i + 1]
+                    });
+                }
+
+                g.selectAll('.request-path')
+                    .data(pathLinks)
+                    .enter().append('line')
+                    .attr('class', 'request-path')
+                    .attr('x1', d => {
+                        const node = nodes.find(n => n.id === d.source);
+                        return node ? node.x : 0;
+                    })
+                    .attr('y1', d => {
+                        const node = nodes.find(n => n.id === d.source);
+                        return node ? node.y : 0;
+                    })
+                    .attr('x2', d => {
+                        const node = nodes.find(n => n.id === d.target);
+                        return node ? node.x : 0;
+                    })
+                    .attr('y2', d => {
+                        const node = nodes.find(n => n.id === d.target);
+                        return node ? node.y : 0;
+                    });
+
+                // Remove path after 3 seconds
+                setTimeout(() => {
+                    g.selectAll('.request-path').remove();
+                }, 3000);
+            }
+        }
+
+        function updateStats(source = null) {
+            if (source) {
+                if (source === 'peer') stats.p2pRequests++;
+                else if (source === 'edge') stats.edgeRequests++;
+                else if (source === 'origin') stats.originRequests++;
+            }
+
+            stats.totalNodes = nodes.length;
+            stats.totalPeers = nodes.filter(n => n.type === 'peer').length;
+            stats.totalSegments = nodes.reduce((sum, n) => sum + Object.keys(n.storage).length, 0);
+
+            document.getElementById('totalNodes').textContent = stats.totalNodes;
+            document.getElementById('totalPeers').textContent = stats.totalPeers;
+            document.getElementById('totalSegments').textContent = stats.totalSegments;
+            document.getElementById('p2pRequests').textContent = stats.p2pRequests;
+            document.getElementById('edgeRequests').textContent = stats.edgeRequests;
+            document.getElementById('originRequests').textContent = stats.originRequests;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('simulateBtn').addEventListener('click', simulateRequest);
+            document.getElementById('resetBtn').addEventListener('click', resetVisualization);
+            document.getElementById('autoBtn').addEventListener('click', toggleAutoSimulate);
+            document.getElementById('clientSelect').addEventListener('change', (e) => {
+                const node = nodes.find(n => n.id === e.target.value);
+                if (node) selectNode(node);
+            });
+        }
+
+        function resetVisualization() {
+            g.selectAll('.request-path').remove();
+            g.selectAll('.node.selected').classed('selected', false);
+            selectedClient = null;
+            document.getElementById('clientSelect').value = '';
+            document.getElementById('segmentInfo').style.display = 'none';
+            showStatus('Visualization reset', 'success');
+        }
+
+        function toggleAutoSimulate() {
+            const btn = document.getElementById('autoBtn');
+            
+            if (autoSimulateInterval) {
+                clearInterval(autoSimulateInterval);
+                autoSimulateInterval = null;
+                btn.textContent = '⚡ Auto Simulate';
+                btn.classList.remove('danger');
+                btn.classList.add('success');
+            } else {
+                autoSimulateInterval = setInterval(() => {
+                    // Select random client
+                    const randomClient = nodes[Math.floor(Math.random() * nodes.length)];
+                    selectNode(randomClient);
+                    
+                    // Select random segment
+                    const segments = ['segment000.ts', 'segment001.ts', 'segment002.ts', 'segment003.ts', 
+                                   'segment004.ts', 'segment005.ts', 'segment006.ts', 'segment007.ts'];
+                    const randomSegment = segments[Math.floor(Math.random() * segments.length)];
+                    document.getElementById('segmentSelect').value = randomSegment;
+                    
+                    // Simulate request
+                    simulateRequest();
+                }, 3000);
+                
+                btn.textContent = '⏹️ Stop Auto';
+                btn.classList.remove('success');
+                btn.classList.add('danger');
+            }
+        }
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        function showTooltip(event, d) {
+            const tooltip = d3.select('body').append('div')
+                .attr('class', 'tooltip')
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+
+            let content = `<strong>${d.id}</strong><br/>`;
+            content += `Type: ${d.type}<br/>`;
+            content += `Region: ${d.region}<br/>`;
+            content += `Segments: ${Object.keys(d.storage).length}<br/>`;
+            
+            if (Object.keys(d.storage).length > 0) {
+                content += `<br/>Has segments:<br/>`;
+                Object.keys(d.storage).forEach(segment => {
+                    content += `• ${segment}<br/>`;
+                });
+            }
+
+            tooltip.html(content);
+        }
+
+        function hideTooltip() {
+            d3.selectAll('.tooltip').remove();
+        }
+
+        // Initialize when page loads
+        init();
+    </script>
+</body>
+</html>

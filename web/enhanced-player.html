@@ -1,0 +1,669 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive CDN Player with Network Visualization</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+    
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+      height: calc(100vh - 40px);
+    }
+    
+    .player-section {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    
+    .network-section {
+      background: #111;
+      border-radius: 10px;
+      border: 1px solid #333;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    video { 
+      width: 100%; 
+      max-width: 600px; 
+      background: #000; 
+      border-radius: 5px;
+    }
+    
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    input {
+      flex: 1;
+      padding: 10px;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 5px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: #0066cc;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #0088ff;
+    }
+    
+    .status {
+      margin: 15px 0;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 5px;
+      border-left: 4px solid #00ff00;
+    }
+    
+    .segment-info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #333;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .network-title {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #333;
+    }
+    
+    /* Network visualization styles */
+    .node {
+      cursor: pointer;
+      stroke-width: 2px;
+    }
+    
+    .node.origin { fill: #ff4444; stroke: #ff6666; }
+    .node.edge { fill: #4444ff; stroke: #6666ff; }
+    .node.peer { fill: #44ff44; stroke: #66ff66; }
+    .node.client { fill: #ffff44; stroke: #ffff66; }
+    .node.active { stroke: #ffffff; stroke-width: 4px; }
+    
+    .link {
+      stroke: #666;
+      stroke-width: 1px;
+      fill: none;
+    }
+    
+    .link.active {
+      stroke: #00ff00;
+      stroke-width: 3px;
+      animation: pulse 1s infinite;
+    }
+    
+    .link.p2p { stroke: #44ff44; }
+    .link.edge { stroke: #4444ff; }
+    .link.origin { stroke: #ff4444; }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .node-label {
+      font-size: 8px;
+      fill: #ffffff;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+    
+    .tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 8px;
+      border-radius: 3px;
+      border: 1px solid #666;
+      pointer-events: none;
+      font-size: 11px;
+      z-index: 1000;
+    }
+    
+    .quick-links {
+      margin: 20px 0;
+    }
+    
+    .quick-link {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 12px;
+      background: #444;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    
+    .quick-link:hover {
+      background: #666;
+    }
+    
+    .stats-mini {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 Interactive CDN Player with Live Network Visualization</h1>
+  
+  <div class="main-container">
+    <div class="player-section">
+      <h2>🎬 HLS Player</h2>
+      <p>Edge: <code>http://localhost:8081</code> — Origin: <code>http://localhost:8080</code></p>
+      
+      <video id="video" controls></video>
+      
+      <div class="controls">
+        <input id="url" placeholder="http://localhost:8081/128k/playlist.m3u8" 
+               value="http://localhost:8081/128k/playlist.m3u8" />
+        <button id="play">▶️ Play</button>
+        <button id="stop">⏹️ Stop</button>
+      </div>
+      
+      <div class="quick-links">
+        <strong>Quick Links:</strong><br>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/128k/playlist.m3u8">Test Song (128k)</a>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/192k/playlist.m3u8">Test Song (192k)</a>
+        <a href="#" class="quick-link" data-url="http://localhost:8081/demo/128k/playlist.m3u8">Demo Audio (128k)</a>
+      </div>
+      
+      <div class="status" id="status" style="display: none;">
+        <h4>📡 Playback Status</h4>
+        <div id="statusDetails"></div>
+      </div>
+      
+      <div class="segment-info" id="segmentInfo" style="display: none;">
+        <h4>📊 Segment Loading</h4>
+        <div id="segmentDetails"></div>
+      </div>
+    </div>
+    
+    <div class="network-section">
+      <div class="network-title">
+        <h3>🌐 Live Network Graph</h3>
+        <div>Real-time CDN routing visualization</div>
+      </div>
+      
+      <svg id="networkGraph"></svg>
+      
+      <div class="stats-mini">
+        <div><strong>Network Stats:</strong></div>
+        <div>Peers: <span id="peerCount">0</span></div>
+        <div>P2P: <span id="p2pCount">0</span></div>
+        <div>Edge: <span id="edgeCount">0</span></div>
+        <div>Origin: <span id="originCount">0</span></div>
+      </div>
+      
+      <div class="tooltip" id="tooltip" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    const tracker = 'http://localhost:8090';
+    let hls, simulation, svg, g, nodes = [], links = [];
+    let stats = { peers: 0, p2p: 0, edge: 0, origin: 0 };
+    let currentSegment = null;
+    
+    // Geographic positions for regions (normalized coordinates)
+    const regionPositions = {
+      'us-east': { x: 0.2, y: 0.3 },
+      'us-west': { x: 0.1, y: 0.35 },
+      'canada': { x: 0.15, y: 0.2 },
+      'eu-west': { x: 0.5, y: 0.25 },
+      'eu-central': { x: 0.55, y: 0.3 },
+      'asia-pacific': { x: 0.8, y: 0.4 },
+      'asia-southeast': { x: 0.75, y: 0.5 },
+      'japan': { x: 0.85, y: 0.3 },
+      'australia': { x: 0.8, y: 0.7 },
+      'brazil': { x: 0.25, y: 0.6 }
+    };
+
+    function initPlayer() {
+      const video = document.getElementById('video');
+      const input = document.getElementById('url');
+      
+      // Play button
+      document.getElementById('play').onclick = () => {
+        const src = input.value.trim();
+        if (!src) return;
+        
+        playStream(src);
+      };
+      
+      // Stop button
+      document.getElementById('stop').onclick = () => {
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        video.pause();
+        video.src = '';
+        hideStatus();
+      };
+      
+      // Quick links
+      document.querySelectorAll('.quick-link').forEach(link => {
+        link.onclick = (e) => {
+          e.preventDefault();
+          const url = link.dataset.url;
+          input.value = url;
+          playStream(url);
+        };
+      });
+    }
+    
+    function playStream(src) {
+      const video = document.getElementById('video');
+      
+      showStatus('🔄 Loading stream...', 'Initializing HLS player');
+      
+      if (Hls.isSupported()) {
+        if (hls) {
+          hls.destroy();
+        }
+        
+        hls = new Hls({ 
+          lowLatencyMode: false,
+          debug: false
+        });
+        
+        // HLS events
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          showStatus('✅ Stream loaded', 'Manifest parsed successfully');
+          video.play();
+        });
+        
+        hls.on(Hls.Events.FRAG_LOADING, function(event, data) {
+          const segmentUrl = data.frag.url;
+          const segmentName = segmentUrl.split('/').pop();
+          currentSegment = segmentName;
+          
+          showSegmentInfo(`🔄 Loading: ${segmentName}`, segmentUrl);
+          
+          // Simulate routing decision for this segment
+          simulateSegmentRouting(segmentName);
+        });
+        
+        hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
+          const segmentName = data.frag.url.split('/').pop();
+          const loadTime = data.stats.loading.end - data.stats.loading.start;
+          
+          showSegmentInfo(`✅ Loaded: ${segmentName}`, `Load time: ${loadTime}ms`);
+        });
+        
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          showStatus('❌ Stream error', `Error: ${data.details}`);
+        });
+        
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src;
+        video.play();
+        showStatus('✅ Native HLS', 'Using native HLS support');
+      } else {
+        showStatus('❌ Not supported', 'HLS not supported in this browser');
+      }
+    }
+    
+    async function simulateSegmentRouting(segmentName) {
+      if (!segmentName.includes('rickroll')) return;
+      
+      const fullSegment = `rickroll/128k/${segmentName}`;
+      const clientRegion = 'us-east'; // Simulate client region
+      
+      try {
+        // Query available peers
+        const response = await fetch(`${tracker}/peers?seg=${fullSegment}&count=5&region=${clientRegion}`);
+        const peers = await response.json();
+        
+        // Clear previous routing visualization
+        d3.selectAll('.link').classed('active', false);
+        d3.selectAll('.node').classed('active', false);
+        
+        let routingDecision;
+        
+        if (peers.length > 0) {
+          const bestPeer = peers.reduce((best, peer) => 
+            (!best || peer.rtt < best.rtt) ? peer : best
+          );
+          
+          if (bestPeer.rtt < 50) {
+            routingDecision = {
+              type: 'P2P',
+              source: bestPeer.peerId,
+              path: ['client', bestPeer.peerId]
+            };
+            stats.p2p++;
+          } else {
+            routingDecision = {
+              type: 'EDGE',
+              source: 'edge-us-east',
+              path: ['client', 'edge-us-east']
+            };
+            stats.edge++;
+          }
+        } else {
+          routingDecision = {
+            type: 'EDGE',
+            source: 'edge-us-east',
+            path: ['client', 'edge-us-east']
+          };
+          stats.edge++;
+        }
+        
+        // Visualize routing
+        visualizeRouting(routingDecision);
+        updateNetworkStats();
+        
+      } catch (error) {
+        console.error('Error simulating routing:', error);
+      }
+    }
+    
+    function visualizeRouting(decision) {
+      // Highlight the routing path
+      decision.path.forEach(nodeId => {
+        d3.select(`#node-${nodeId.replace(/[^a-zA-Z0-9]/g, '_')}`)
+          .classed('active', true);
+      });
+      
+      // Highlight links in the path
+      for (let i = 0; i < decision.path.length - 1; i++) {
+        const sourceId = decision.path[i];
+        const targetId = decision.path[i + 1];
+        
+        d3.selectAll('.link')
+          .filter(function(d) {
+            return (d.source.id === sourceId && d.target.id === targetId) ||
+                   (d.source.id === targetId && d.target.id === sourceId);
+          })
+          .classed('active', true)
+          .classed(decision.type.toLowerCase(), true);
+      }
+      
+      // Remove highlights after 2 seconds
+      setTimeout(() => {
+        d3.selectAll('.link').classed('active', false);
+        d3.selectAll('.node').classed('active', false);
+      }, 2000);
+    }
+    
+    function initNetworkGraph() {
+      const container = document.querySelector('.network-section');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      svg = d3.select('#networkGraph')
+        .attr('width', width)
+        .attr('height', height);
+        
+      g = svg.append('g');
+      
+      // Create network topology
+      createMiniNetworkTopology(width, height);
+      loadMiniPeerData();
+    }
+    
+    function createMiniNetworkTopology(width, height) {
+      nodes = [];
+      links = [];
+      
+      // Add client (bottom left)
+      nodes.push({
+        id: 'client',
+        type: 'client',
+        x: width * 0.1,
+        y: height * 0.8,
+        fx: width * 0.1,
+        fy: height * 0.8,
+        label: 'You',
+        region: 'us-east'
+      });
+      
+      // Add origin server (center)
+      nodes.push({
+        id: 'origin',
+        type: 'origin',
+        x: width * 0.5,
+        y: height * 0.2,
+        fx: width * 0.5,
+        fy: height * 0.2,
+        label: 'Origin',
+        region: 'global'
+      });
+      
+      // Add edge server
+      nodes.push({
+        id: 'edge-us-east',
+        type: 'edge',
+        x: width * 0.3,
+        y: height * 0.4,
+        fx: width * 0.3,
+        fy: height * 0.4,
+        label: 'Edge',
+        region: 'us-east'
+      });
+      
+      // Connect client to edge
+      links.push({
+        source: 'client',
+        target: 'edge-us-east',
+        type: 'client-connection'
+      });
+      
+      // Connect edge to origin
+      links.push({
+        source: 'edge-us-east',
+        target: 'origin',
+        type: 'backbone'
+      });
+      
+      updateMiniGraph();
+    }
+    
+    async function loadMiniPeerData() {
+      try {
+        const response = await fetch(`${tracker}/peers?seg=rickroll/128k/segment000.ts&count=8&region=us-east`);
+        const peers = await response.json();
+        
+        const container = document.querySelector('.network-section');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        peers.slice(0, 6).forEach((peer, index) => {
+          const angle = (index / 6) * Math.PI * 2;
+          const radius = 80;
+          const centerX = width * 0.7;
+          const centerY = height * 0.6;
+          
+          const peerNode = {
+            id: peer.peerId,
+            type: 'peer',
+            x: centerX + Math.cos(angle) * radius,
+            y: centerY + Math.sin(angle) * radius,
+            fx: centerX + Math.cos(angle) * radius,
+            fy: centerY + Math.sin(angle) * radius,
+            label: peer.peerId.split('-').pop(),
+            region: peer.region,
+            rtt: peer.rtt
+          };
+          
+          nodes.push(peerNode);
+          
+          // Connect peer to client (potential P2P)
+          links.push({
+            source: 'client',
+            target: peer.peerId,
+            type: 'p2p-potential'
+          });
+        });
+        
+        stats.peers = peers.length;
+        updateNetworkStats();
+        updateMiniGraph();
+        
+      } catch (error) {
+        console.error('Error loading peer data:', error);
+      }
+    }
+    
+    function updateMiniGraph() {
+      // Update links
+      const link = g.selectAll('.link')
+        .data(links, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+      
+      link.exit().remove();
+      
+      link.enter()
+        .append('line')
+        .attr('class', 'link')
+        .merge(link)
+        .attr('x1', d => d.source.x || nodes.find(n => n.id === d.source).x)
+        .attr('y1', d => d.source.y || nodes.find(n => n.id === d.source).y)
+        .attr('x2', d => d.target.x || nodes.find(n => n.id === d.target).x)
+        .attr('y2', d => d.target.y || nodes.find(n => n.id === d.target).y);
+      
+      // Update nodes
+      const node = g.selectAll('.node-group')
+        .data(nodes, d => d.id);
+      
+      node.exit().remove();
+      
+      const nodeEnter = node.enter()
+        .append('g')
+        .attr('class', 'node-group')
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+      
+      nodeEnter.append('circle')
+        .attr('class', d => `node ${d.type}`)
+        .attr('id', d => `node-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`)
+        .attr('r', d => d.type === 'origin' ? 12 : d.type === 'edge' ? 10 : d.type === 'client' ? 8 : 6)
+        .on('mouseover', showNetworkTooltip)
+        .on('mouseout', hideNetworkTooltip);
+      
+      nodeEnter.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', d => d.type === 'origin' ? 20 : d.type === 'edge' ? 18 : 15)
+        .text(d => d.label);
+    }
+    
+    function showNetworkTooltip(event, d) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.pageX + 10) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+      
+      let content = `<strong>${d.label}</strong><br>`;
+      content += `Type: ${d.type}<br>`;
+      content += `Region: ${d.region}<br>`;
+      
+      if (d.type === 'peer') {
+        content += `RTT: ${d.rtt}ms<br>`;
+      }
+      
+      tooltip.innerHTML = content;
+    }
+    
+    function hideNetworkTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+    
+    function showStatus(title, details) {
+      const status = document.getElementById('status');
+      const statusDetails = document.getElementById('statusDetails');
+      
+      statusDetails.innerHTML = `
+        <div><strong>${title}</strong></div>
+        <div>${details}</div>
+      `;
+      
+      status.style.display = 'block';
+    }
+    
+    function hideStatus() {
+      document.getElementById('status').style.display = 'none';
+    }
+    
+    function showSegmentInfo(title, details) {
+      const segmentInfo = document.getElementById('segmentInfo');
+      const segmentDetails = document.getElementById('segmentDetails');
+      
+      segmentDetails.innerHTML = `
+        <div><strong>${title}</strong></div>
+        <div>${details}</div>
+      `;
+      
+      segmentInfo.style.display = 'block';
+    }
+    
+    function updateNetworkStats() {
+      document.getElementById('peerCount').textContent = stats.peers;
+      document.getElementById('p2pCount').textContent = stats.p2p;
+      document.getElementById('edgeCount').textContent = stats.edge;
+      document.getElementById('originCount').textContent = stats.origin;
+    }
+    
+    // Initialize when page loads
+    window.addEventListener('load', () => {
+      initPlayer();
+      initNetworkGraph();
+      
+      // Check for URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const songUrl = urlParams.get('url');
+      if (songUrl) {
+        document.getElementById('url').value = songUrl;
+        loadStream(songUrl);
+      }
+    });
+    
+    window.addEventListener('resize', () => {
+      setTimeout(initNetworkGraph, 100);
+    });
+  </script>
+</body>
+</html>

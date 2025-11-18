@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify HQ - Upload New Song</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .upload-form {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1db954;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 20px;
+            border: 2px dashed #1db954;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fffe;
+        }
+
+        .file-upload-label:hover {
+            background: #e8f5e8;
+            border-color: #1ed760;
+        }
+
+        .file-upload-label.dragover {
+            background: #e8f5e8;
+            border-color: #1ed760;
+            transform: scale(1.02);
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #1db954, #1ed760);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .songs-list {
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .songs-list h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .song-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .song-info h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .song-info p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .song-status {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .song-status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .song-status.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .song-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .play-btn {
+            background: #1db954;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .play-btn:hover {
+            background: #1ed760;
+        }
+
+        .play-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Spotify HQ</h1>
+            <p>Upload New Songs to the Global CDN Network</p>
+        </div>
+
+        <div class="upload-form">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title">Song Title *</label>
+                    <input type="text" id="title" name="title" required placeholder="Enter song title">
+                </div>
+
+                <div class="form-group">
+                    <label for="artist">Artist Name *</label>
+                    <input type="text" id="artist" name="artist" required placeholder="Enter artist name">
+                </div>
+
+                <div class="form-group">
+                    <label for="audioFile">Audio File *</label>
+                    <div class="file-upload">
+                        <input type="file" id="audioFile" name="audio" accept=".mp3,.wav,.m4a" required>
+                        <label for="audioFile" class="file-upload-label" id="fileLabel">
+                            <div>📁 Click to select audio file or drag & drop</div>
+                            <div style="font-size: 14px; margin-top: 5px; opacity: 0.7;">
+                                Supported formats: MP3, WAV, M4A (Max 32MB)
+                            </div>
+                        </label>
+                        <div class="file-info" id="fileInfo"></div>
+                    </div>
+                </div>
+
+                <div class="progress" id="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <div class="status" id="status"></div>
+
+                <button type="submit" class="btn" id="uploadBtn">
+                    🚀 Upload & Process Song
+                </button>
+            </form>
+
+            <div class="songs-list">
+                <h3>📚 Available Songs</h3>
+                <div id="songsList">
+                    <p>Loading songs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8093';
+        let songs = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSongs();
+            setupFileUpload();
+            setupForm();
+        });
+
+        function setupFileUpload() {
+            const fileInput = document.getElementById('audioFile');
+            const fileLabel = document.getElementById('fileLabel');
+            const fileInfo = document.getElementById('fileInfo');
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    fileLabel.innerHTML = `📁 ${file.name}`;
+                    fileInfo.innerHTML = `Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                    fileInfo.style.display = 'block';
+                }
+            });
+
+            // Drag and drop
+            fileLabel.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                fileLabel.classList.add('dragover');
+            });
+
+            fileLabel.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                fileLabel.classList.remove('dragover');
+            });
+
+            fileLabel.addEventListener('drop', function(e) {
+                e.preventDefault();
+                fileLabel.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function setupForm() {
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                uploadSong();
+            });
+        }
+
+        async function uploadSong() {
+            const formData = new FormData();
+            const title = document.getElementById('title').value;
+            const artist = document.getElementById('artist').value;
+            const audioFile = document.getElementById('audioFile').files[0];
+
+            if (!title || !artist || !audioFile) {
+                showStatus('Please fill in all fields and select a file', 'error');
+                return;
+            }
+
+            formData.append('title', title);
+            formData.append('artist', artist);
+            formData.append('audio', audioFile);
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Uploading...';
+            progress.style.display = 'block';
+            showStatus('Uploading song...', 'processing');
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+
+                const song = await response.json();
+                showStatus(`✅ Song "${song.title}" uploaded successfully! Processing in background...`, 'success');
+                
+                // Reset form
+                document.getElementById('uploadForm').reset();
+                document.getElementById('fileLabel').innerHTML = '📁 Click to select audio file or drag & drop';
+                document.getElementById('fileInfo').style.display = 'none';
+                
+                // Reload songs list
+                loadSongs();
+
+            } catch (error) {
+                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '🚀 Upload & Process Song';
+                progress.style.display = 'none';
+            }
+        }
+
+        async function loadSongs() {
+            try {
+                const response = await fetch(`${API_BASE}/songs`);
+                songs = await response.json();
+                displaySongs();
+            } catch (error) {
+                console.error('Failed to load songs:', error);
+                document.getElementById('songsList').innerHTML = '<p>Failed to load songs</p>';
+            }
+        }
+
+        function displaySongs() {
+            const songsList = document.getElementById('songsList');
+            
+            if (Object.keys(songs).length === 0) {
+                songsList.innerHTML = '<p>No songs uploaded yet</p>';
+                return;
+            }
+
+            const songsArray = Object.values(songs).sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime));
+            
+            songsList.innerHTML = songsArray.map(song => `
+                <div class="song-item">
+                    <div class="song-info">
+                        <h4>${song.title}</h4>
+                        <p>by ${song.artist} • ${song.bitrates ? song.bitrates.join(', ') : 'Processing...'}</p>
+                    </div>
+                    <div>
+                        <span class="song-status ${song.status}">${song.status}</span>
+                        ${song.status === 'ready' ? 
+                            `<button class="play-btn" onclick="playSong('${song.id}')">▶️ Play</button>` : 
+                            ''
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function playSong(songId) {
+            const song = songs[songId];
+            if (song && song.status === 'ready') {
+                // Open the enhanced player with the new song
+                const playlistUrl = `http://localhost:8093/hls/${songId}/128k/playlist.m3u8`;
+                window.open(`enhanced-player.html?url=${encodeURIComponent(playlistUrl)}`, '_blank');
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Auto-refresh songs list every 5 seconds
+        setInterval(loadSongs, 5000);
+    </script>
+</body>
+</html>
