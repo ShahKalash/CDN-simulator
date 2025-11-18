@@ -302,7 +302,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌐 Interactive CDN Network</h1>
+            <h1>Interactive CDN Network</h1>
             <p>Real-time P2P + CDN Content Delivery Simulation</p>
         </div>
 
@@ -336,9 +336,9 @@
                 </select>
             </div>
 
-            <button id="simulateBtn" class="btn">🚀 Simulate Request</button>
-            <button id="resetBtn" class="btn secondary">🔄 Reset</button>
-            <button id="autoBtn" class="btn success">⚡ Auto Simulate</button>
+            <button id="simulateBtn" class="btn">Simulate Request</button>
+            <button id="resetBtn" class="btn secondary">Reset</button>
+            <button id="autoBtn" class="btn success">Auto Simulate</button>
         </div>
 
         <div id="status" class="status" style="display: none;"></div>
@@ -714,9 +714,9 @@
                 if (result.success) {
                     showRequestPath(result);
                     updateStats(result.source);
-                    showStatus(`✅ Request successful! Source: ${result.source}, Latency: ${result.latency}ms, Hops: ${result.hops}`, 'success');
+                    showStatus(`Request successful! Source: ${result.source}, Latency: ${result.latency}ms, Hops: ${result.hops}`, 'success');
                 } else {
-                    showStatus(`❌ Request failed: ${result.source}`, 'error');
+                    showStatus(`Request failed: ${result.source}`, 'error');
                 }
             } catch (error) {
                 console.error('Request failed:', error);
@@ -809,7 +809,7 @@
             if (autoSimulateInterval) {
                 clearInterval(autoSimulateInterval);
                 autoSimulateInterval = null;
-                btn.textContent = '⚡ Auto Simulate';
+                btn.textContent = 'Auto Simulate';
                 btn.classList.remove('danger');
                 btn.classList.add('success');
             } else {
@@ -828,7 +828,7 @@
                     simulateRequest();
                 }, 3000);
                 
-                btn.textContent = '⏹️ Stop Auto';
+                btn.textContent = 'Stop Auto';
                 btn.classList.remove('success');
                 btn.classList.add('danger');
             }

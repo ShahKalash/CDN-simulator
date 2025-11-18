@@ -1,4 +1,4 @@
-# 🎬 CDN Simulator Demo Guide
+# CDN Simulator Demo Guide
 
 ## Quick Start (30 seconds)
 ```powershell
@@ -6,7 +6,7 @@
 .\demo-start.ps1
 ```
 
-## What's Working ✅
+## What's Working
 
 ### Core Services
 - **Tracker Service** (Port 8090): Peer discovery and segment tracking
@@ -109,7 +109,7 @@ go run tools/persistent-peers/main.go 50
 - **Tracker**: Discovers which peers have which segments
 - **Signaling**: Establishes WebRTC connections between peers
 
-## Success! 🎉
+## Success!
 
 Your CDN simulator is fully functional and ready for demo. The system demonstrates:
 - Hybrid CDN + P2P architecture

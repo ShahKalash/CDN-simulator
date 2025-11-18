@@ -186,11 +186,11 @@
   </style>
 </head>
 <body>
-  <h1>🎵 Interactive CDN Player with Live Network Visualization</h1>
+  <h1>Interactive CDN Player with Live Network Visualization</h1>
   
   <div class="main-container">
     <div class="player-section">
-      <h2>🎬 HLS Player</h2>
+      <h2>HLS Player</h2>
       <p>Edge: <code>http://localhost:8081</code> — Origin: <code>http://localhost:8080</code></p>
       
       <video id="video" controls></video>
@@ -198,8 +198,8 @@
       <div class="controls">
         <input id="url" placeholder="http://localhost:8081/128k/playlist.m3u8" 
                value="http://localhost:8081/128k/playlist.m3u8" />
-        <button id="play">▶️ Play</button>
-        <button id="stop">⏹️ Stop</button>
+        <button id="play">Play</button>
+        <button id="stop">Stop</button>
       </div>
       
       <div class="quick-links">
@@ -210,19 +210,19 @@
       </div>
       
       <div class="status" id="status" style="display: none;">
-        <h4>📡 Playback Status</h4>
+        <h4>Playback Status</h4>
         <div id="statusDetails"></div>
       </div>
       
       <div class="segment-info" id="segmentInfo" style="display: none;">
-        <h4>📊 Segment Loading</h4>
+        <h4>Segment Loading</h4>
         <div id="segmentDetails"></div>
       </div>
     </div>
     
     <div class="network-section">
       <div class="network-title">
-        <h3>🌐 Live Network Graph</h3>
+        <h3>Live Network Graph</h3>
         <div>Real-time CDN routing visualization</div>
       </div>
       
@@ -297,7 +297,7 @@
     function playStream(src) {
       const video = document.getElementById('video');
       
-      showStatus('🔄 Loading stream...', 'Initializing HLS player');
+      showStatus('Loading stream...', 'Initializing HLS player');
       
       if (Hls.isSupported()) {
         if (hls) {
@@ -311,7 +311,7 @@
         
         // HLS events
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
-          showStatus('✅ Stream loaded', 'Manifest parsed successfully');
+          showStatus('Stream loaded', 'Manifest parsed successfully');
           video.play();
         });
         
@@ -320,7 +320,7 @@
           const segmentName = segmentUrl.split('/').pop();
           currentSegment = segmentName;
           
-          showSegmentInfo(`🔄 Loading: ${segmentName}`, segmentUrl);
+          showSegmentInfo(`Loading: ${segmentName}`, segmentUrl);
           
           // Simulate routing decision for this segment
           simulateSegmentRouting(segmentName);
@@ -330,11 +330,11 @@
           const segmentName = data.frag.url.split('/').pop();
           const loadTime = data.stats.loading.end - data.stats.loading.start;
           
-          showSegmentInfo(`✅ Loaded: ${segmentName}`, `Load time: ${loadTime}ms`);
+          showSegmentInfo(`Loaded: ${segmentName}`, `Load time: ${loadTime}ms`);
         });
         
         hls.on(Hls.Events.ERROR, function(event, data) {
-          showStatus('❌ Stream error', `Error: ${data.details}`);
+          showStatus('Stream error', `Error: ${data.details}`);
         });
         
         hls.loadSource(src);
@@ -343,9 +343,9 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src;
         video.play();
-        showStatus('✅ Native HLS', 'Using native HLS support');
+        showStatus('Native HLS', 'Using native HLS support');
       } else {
-        showStatus('❌ Not supported', 'HLS not supported in this browser');
+        showStatus('Not supported', 'HLS not supported in this browser');
       }
     }
     

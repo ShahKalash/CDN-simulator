@@ -264,7 +264,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎵 Spotify HQ</h1>
+            <h1>Spotify HQ</h1>
             <p>Upload New Songs to the Global CDN Network</p>
         </div>
 
@@ -285,7 +285,7 @@
                     <div class="file-upload">
                         <input type="file" id="audioFile" name="audio" accept=".mp3,.wav,.m4a" required>
                         <label for="audioFile" class="file-upload-label" id="fileLabel">
-                            <div>📁 Click to select audio file or drag & drop</div>
+                            <div>Click to select audio file or drag & drop</div>
                             <div style="font-size: 14px; margin-top: 5px; opacity: 0.7;">
                                 Supported formats: MP3, WAV, M4A (Max 32MB)
                             </div>
@@ -301,12 +301,12 @@
                 <div class="status" id="status"></div>
 
                 <button type="submit" class="btn" id="uploadBtn">
-                    🚀 Upload & Process Song
+                    Upload & Process Song
                 </button>
             </form>
 
             <div class="songs-list">
-                <h3>📚 Available Songs</h3>
+                <h3>Available Songs</h3>
                 <div id="songsList">
                     <p>Loading songs...</p>
                 </div>
@@ -333,7 +333,7 @@
             fileInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
-                    fileLabel.innerHTML = `📁 ${file.name}`;
+                    fileLabel.innerHTML = `${file.name}`;
                     fileInfo.innerHTML = `Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
                     fileInfo.style.display = 'block';
                 }
@@ -389,7 +389,7 @@
             const progressBar = document.getElementById('progressBar');
 
             uploadBtn.disabled = true;
-            uploadBtn.textContent = '⏳ Uploading...';
+            uploadBtn.textContent = 'Uploading...';
             progress.style.display = 'block';
             showStatus('Uploading song...', 'processing');
 
@@ -405,21 +405,21 @@
                 }
 
                 const song = await response.json();
-                showStatus(`✅ Song "${song.title}" uploaded successfully! Processing in background...`, 'success');
+                showStatus(`Song "${song.title}" uploaded successfully! Processing in background...`, 'success');
                 
                 // Reset form
                 document.getElementById('uploadForm').reset();
-                document.getElementById('fileLabel').innerHTML = '📁 Click to select audio file or drag & drop';
+                document.getElementById('fileLabel').innerHTML = 'Click to select audio file or drag & drop';
                 document.getElementById('fileInfo').style.display = 'none';
                 
                 // Reload songs list
                 loadSongs();
 
             } catch (error) {
-                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+                showStatus(`Upload failed: ${error.message}`, 'error');
             } finally {
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = '🚀 Upload & Process Song';
+                uploadBtn.textContent = 'Upload & Process Song';
                 progress.style.display = 'none';
             }
         }
@@ -454,7 +454,7 @@
                     <div>
                         <span class="song-status ${song.status}">${song.status}</span>
                         ${song.status === 'ready' ? 
-                            `<button class="play-btn" onclick="playSong('${song.id}')">▶️ Play</button>` : 
+                            `<button class="play-btn" onclick="playSong('${song.id}')">Play</button>` : 
                             ''
                         }
                     </div>

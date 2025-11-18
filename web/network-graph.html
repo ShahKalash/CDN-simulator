@@ -162,11 +162,11 @@
   </style>
 </head>
 <body>
-  <h1>🌐 CDN Network Graph Visualization</h1>
+  <h1>CDN Network Graph Visualization</h1>
   
   <div class="container">
     <div class="controls">
-      <h3>🎯 Request Simulation</h3>
+      <h3>Request Simulation</h3>
       <label>Segment:</label>
       <select id="segmentSelect">
         <option value="segment000.ts">Segment 000 (Most Popular)</option>
@@ -188,17 +188,17 @@
         <option value="canada">Canada</option>
       </select>
       
-      <button id="simulateRequest">🚀 Simulate Request</button>
-      <button id="autoSimulate">🔄 Auto Simulate</button>
-      <button id="resetGraph">🔄 Reset Graph</button>
+      <button id="simulateRequest">Simulate Request</button>
+      <button id="autoSimulate">Auto Simulate</button>
+      <button id="resetGraph">Reset Graph</button>
       
       <div class="routing-info" id="routingInfo" style="display: none;">
-        <h4>📡 Routing Decision</h4>
+        <h4>Routing Decision</h4>
         <div id="routingDetails"></div>
       </div>
       
       <div class="stats">
-        <h4>📊 Network Stats</h4>
+        <h4>Network Stats</h4>
         <div class="stat-item">
           <span>Total Peers:</span>
           <span id="totalPeers">0</span>
@@ -226,7 +226,7 @@
       <svg id="networkGraph"></svg>
       
       <div class="legend">
-        <h4>🏷️ Legend</h4>
+        <h4>Legend</h4>
         <div class="legend-item">
           <div class="legend-color" style="background: #ff4444;"></div>
           <span>Origin Server</span>
@@ -691,7 +691,7 @@
       if (autoSimulateInterval) {
         clearInterval(autoSimulateInterval);
         autoSimulateInterval = null;
-        button.textContent = '🔄 Auto Simulate';
+        button.textContent = 'Auto Simulate';
       } else {
         autoSimulateInterval = setInterval(() => {
           // Random segment and region
@@ -704,7 +704,7 @@
           simulateRequest();
         }, 2000);
         
-        button.textContent = '⏹️ Stop Auto';
+        button.textContent = 'Stop Auto';
       }
     }
     

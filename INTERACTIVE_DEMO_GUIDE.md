@@ -1,9 +1,9 @@
-# 🎵 Interactive CDN + P2P Demo Guide
+# Interactive CDN + P2P Demo Guide
 
 ## Overview
 This demo showcases a realistic Content Delivery Network (CDN) with Peer-to-Peer (P2P) capabilities, simulating how platforms like Spotify distribute music globally.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Start All Services
 ```powershell
@@ -26,7 +26,7 @@ python -m http.server 8000
 - **Song Upload (Spotify HQ)**: http://localhost:8000/web/song-upload.html
 - **Enhanced Player**: http://localhost:8000/web/enhanced-player.html
 
-## 🎯 Demo Scenarios
+## Demo Scenarios
 
 ### Scenario 1: Upload New Song (Spotify HQ)
 1. Open **Song Upload** interface
@@ -49,11 +49,11 @@ python -m http.server 8000
 1. Watch the peer simulator logs
 2. See peers sharing segments with each other:
    ```
-   ✅ peer-12 received segment006.ts from peer peer-11 (P2P, 1 hop, 20ms)
+   peer-12 received segment006.ts from peer peer-11 (P2P, 1 hop, 20ms)
    ```
 3. Observe how segments spread through the P2P network
 
-## 🌐 Network Architecture
+## Network Architecture
 
 ### Origin Server
 - **Location**: Center of network
@@ -73,7 +73,7 @@ python -m http.server 8000
 - **Connections**: P2P mesh + some edge connections
 - **Purpose**: User devices, P2P sharing
 
-## 🔄 Request Routing Logic
+## Request Routing Logic
 
 ### 1. P2P First (Fastest)
 - Check connected peers (1 hop)
@@ -92,7 +92,7 @@ python -m http.server 8000
 - Edge caches for future requests
 - **Latency**: 100-250ms
 
-## 📊 Key Features Demonstrated
+## Key Features Demonstrated
 
 ### 1. Intelligent Routing
 - **P2P Priority**: Always try peers first
@@ -117,7 +117,7 @@ python -m http.server 8000
 - **Memory Management**: LRU eviction when full
 - **Regional Clustering**: Prefer same-region peers
 
-## 🎮 Interactive Controls
+## Interactive Controls
 
 ### Network Visualization
 - **Click Nodes**: Select as client
@@ -131,7 +131,7 @@ python -m http.server 8000
 - **Song Library**: View all uploaded songs
 - **Direct Play**: Test uploaded songs
 
-## 📈 Performance Metrics
+## Performance Metrics
 
 ### Request Sources
 - **P2P Requests**: Fastest, reduces server load
@@ -143,7 +143,7 @@ python -m http.server 8000
 - **Latency Optimization**: Geographic distribution
 - **Scalability**: More peers = better performance
 
-## 🔧 Technical Details
+## Technical Details
 
 ### Services
 - **Network Topology** (Port 8092): Manages all nodes and routing
@@ -157,7 +157,7 @@ python -m http.server 8000
 - **Audio Processing**: FFmpeg
 - **Network Simulation**: Custom P2P + CDN logic
 
-## 🎯 Demo Tips
+## Demo Tips
 
 ### For Presenters
 1. **Start with Upload**: Show how easy it is to add content
@@ -173,7 +173,7 @@ python -m http.server 8000
 4. **Custom Songs**: Upload your own audio files
 5. **Modify Parameters**: Change peer count, segment distribution, etc.
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Services Not Starting
 - Check if ports are available
@@ -190,13 +190,13 @@ python -m http.server 8000
 - Check browser console for errors
 - Ensure all services are running
 
-## 🎉 Success Indicators
+## Success Indicators
 
 ### Working Demo Shows:
-- ✅ Peers sharing segments with each other
-- ✅ Visual request paths in network graph
-- ✅ Songs processing and distributing
-- ✅ P2P requests faster than edge/origin
-- ✅ Interactive node selection and simulation
+- Peers sharing segments with each other
+- Visual request paths in network graph
+- Songs processing and distributing
+- P2P requests faster than edge/origin
+- Interactive node selection and simulation
 
 This demo effectively simulates how modern content delivery works at scale, combining the efficiency of P2P networks with the reliability of traditional CDN infrastructure.

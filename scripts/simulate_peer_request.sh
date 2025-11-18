@@ -18,7 +18,7 @@ fi
 PEER_NAME="peer-${PEER_NUM}"
 
 echo "=========================================="
-echo "🎵 Music Request Simulation"
+echo "Music Request Simulation"
 echo "=========================================="
 echo "Peer: $PEER_NAME"
 echo "Segment: $SEGMENT_ID"
@@ -26,12 +26,12 @@ echo ""
 
 # Check if peer container exists
 if ! docker ps --format '{{.Names}}' | grep -Fxq "$PEER_NAME"; then
-  echo "❌ Error: Peer container '$PEER_NAME' is not running"
+  echo "ERROR: Error: Peer container '$PEER_NAME' is not running"
   exit 1
 fi
 
 # Get peer info
-echo "📡 Step 1: Checking peer status..."
+echo " Step 1: Checking peer status..."
 PEER_IP=$(docker inspect "$PEER_NAME" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
 PEER_NEIGHBORS=$(docker exec "$PEER_NAME" wget -qO- http://localhost:8080/peers 2>/dev/null || echo "")
 echo "   Peer IP: $PEER_IP"
@@ -39,7 +39,7 @@ echo "   Neighbors: ${PEER_NEIGHBORS:-none}"
 echo ""
 
 # Query tracker for available peers with this segment
-echo "🔍 Step 2: Querying tracker for segment '$SEGMENT_ID'..."
+echo " Step 2: Querying tracker for segment '$SEGMENT_ID'..."
 TRACKER_RESPONSE=$(curl -s "${TRACKER_URL}/segments/${SEGMENT_ID}?region=global" 2>/dev/null || echo '{"segment":"'$SEGMENT_ID'","peers":[]}')
 
 # Check if peers array is empty
@@ -55,16 +55,16 @@ echo "   Found $PEER_COUNT peer(s) with segment '$SEGMENT_ID'"
 echo ""
 
 if [[ "$PEER_COUNT" -eq 0 ]]; then
-  echo "⚠️  No peers found with segment '$SEGMENT_ID'"
+  echo "WARNING:  No peers found with segment '$SEGMENT_ID'"
   echo ""
-  echo "📊 Routing Decision:"
+  echo " Routing Decision:"
   echo "   Source: ORIGIN (no peers available)"
   echo "   Path: $PEER_NAME → edge-server → origin-server"
   echo "   Estimated Latency: ~150ms"
   echo ""
   
   # Fetch from origin (simulate by creating segment and storing in peer)
-  echo "📥 Step 5: Fetching from origin server..."
+  echo " Step 5: Fetching from origin server..."
   echo "   Simulating origin fetch (creating segment data)..."
   
   # Generate a dummy segment payload
@@ -81,17 +81,17 @@ if [[ "$PEER_COUNT" -eq 0 ]]; then
   
   if echo "$VERIFY_RESULT" | grep -q '"id"'; then
     SEG_SIZE=$(echo "$VERIFY_RESULT" | wc -c)
-    echo "   ✅ Successfully fetched segment from origin"
+    echo "   SUCCESS: Successfully fetched segment from origin"
     echo "   Segment size: $SEG_SIZE bytes"
-    echo "   ✅ Segment cached in $PEER_NAME"
+    echo "   SUCCESS: Segment cached in $PEER_NAME"
     echo ""
-    echo "💡 Segment is now in peer cache. Peer should announce it to tracker on next heartbeat."
+    echo "INFO: Segment is now in peer cache. Peer should announce it to tracker on next heartbeat."
   else
-    echo "   ❌ Failed to fetch/store segment from origin"
+    echo "   ERROR: Failed to fetch/store segment from origin"
   fi
   echo ""
   echo "=========================================="
-  echo "✅ Simulation Complete"
+  echo "SUCCESS: Simulation Complete"
   echo "=========================================="
   exit 0
 fi
@@ -102,12 +102,12 @@ BEST_RTT=$(echo "$TRACKER_RESPONSE" | grep -o '"rtt_ms":[0-9]*' | head -1 | cut 
 BEST_REGION=$(echo "$TRACKER_RESPONSE" | grep -o '"region":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
 
 if [[ -z "$BEST_PEER" ]]; then
-  echo "❌ Error: Could not parse tracker response"
+  echo "ERROR: Error: Could not parse tracker response"
   echo "Response: $TRACKER_RESPONSE"
   exit 1
 fi
 
-echo "✅ Best peer found: $BEST_PEER"
+echo "SUCCESS: Best peer found: $BEST_PEER"
 echo "   Region: $BEST_REGION"
 echo "   RTT: ${BEST_RTT}ms"
 echo ""
@@ -119,7 +119,7 @@ if echo "$PEER_NEIGHBORS" | grep -q "$BEST_PEER"; then
 fi
 
 # Find path through topology
-echo "🗺️  Step 3: Finding routing path..."
+echo "  Step 3: Finding routing path..."
 ROUTE_RESPONSE=$(curl -s "${TOPOLOGY_URL}/path?from=${PEER_NAME}&to=${BEST_PEER}" || echo '{"path":[]}')
 
 # Extract path from response
@@ -136,24 +136,24 @@ echo "   Hops: $HOP_COUNT"
 echo ""
 
 # Routing decision
-echo "📊 Step 4: Routing Decision"
+echo " Step 4: Routing Decision"
 if [[ "$IS_NEIGHBOR" == "true" ]]; then
-  echo "   ✅ Source: P2P (Direct Neighbor)"
+  echo "   SUCCESS: Source: P2P (Direct Neighbor)"
   echo "   Path: $PEER_NAME → $BEST_PEER"
   echo "   Latency: ~${BEST_RTT}ms (1 hop)"
 elif [[ "$HOP_COUNT" -le 3 && "$BEST_RTT" -lt 100 ]]; then
-  echo "   ✅ Source: P2P (Multi-hop)"
+  echo "   SUCCESS: Source: P2P (Multi-hop)"
   echo "   Path: $ROUTING_PATH"
   echo "   Latency: ~$((BEST_RTT + HOP_COUNT * 10))ms ($HOP_COUNT hops)"
 else
-  echo "   ⚠️  Source: EDGE (P2P too slow/distant)"
+  echo "   WARNING:  Source: EDGE (P2P too slow/distant)"
   echo "   Path: $PEER_NAME → edge-server"
   echo "   Latency: ~80ms"
 fi
 echo ""
 
 # Try to fetch segment from best peer
-echo "📥 Step 5: Attempting to fetch segment..."
+echo " Step 5: Attempting to fetch segment..."
 
 BEST_PEER_IP=$(docker inspect "$BEST_PEER" --format '{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{printf "%s\n" .IPAddress}}{{end}}{{end}}' 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
 
@@ -173,12 +173,12 @@ if [[ -n "$BEST_PEER_IP" ]]; then
   
   if [[ -n "$FETCH_RESPONSE" ]] && [[ "$FETCH_RESPONSE" != "null" ]] && echo "$FETCH_RESPONSE" | grep -q '"id"'; then
     SEG_SIZE=$(echo "$FETCH_RESPONSE" | wc -c)
-    echo "   ✅ Successfully fetched segment from $BEST_PEER"
+    echo "   SUCCESS: Successfully fetched segment from $BEST_PEER"
     echo "   Segment size: $SEG_SIZE bytes"
     echo "   Fetch time: ${FETCH_TIME}s"
     
     # Store the segment in the requesting peer's cache
-    echo "   💾 Storing segment in $PEER_NAME's cache..."
+    echo "    Storing segment in $PEER_NAME's cache..."
     PAYLOAD_B64=$(echo "$FETCH_RESPONSE" | grep -o '"payload":"[^"]*"' | cut -d'"' -f4)
     if [[ -n "$PAYLOAD_B64" ]]; then
       # Use docker run with curl to POST the segment
@@ -191,26 +191,26 @@ if [[ -n "$BEST_PEER_IP" ]]; then
       VERIFY_RESULT=$(docker exec "$PEER_NAME" wget -qO- "http://localhost:8080/segments/${SEGMENT_ID}" 2>/dev/null || echo "")
       
       if echo "$VERIFY_RESULT" | grep -q '"id"'; then
-        echo "   ✅ Segment cached in $PEER_NAME"
+        echo "   SUCCESS: Segment cached in $PEER_NAME"
       else
-        echo "   ⚠️  Failed to cache segment in $PEER_NAME"
+        echo "   WARNING:  Failed to cache segment in $PEER_NAME"
       fi
     else
-      echo "   ⚠️  Could not extract payload to cache"
+      echo "   WARNING:  Could not extract payload to cache"
     fi
   else
-    echo "   ❌ Failed to fetch segment from $BEST_PEER"
+    echo "   ERROR: Failed to fetch segment from $BEST_PEER"
     if [[ "$IS_NEIGHBOR" != "true" ]]; then
       echo "   Note: Multi-hop fetch may require relay functionality"
       echo "   Routing path: $ROUTING_PATH"
     fi
   fi
 else
-  echo "   ⚠️  Could not determine IP for $BEST_PEER"
+  echo "   WARNING:  Could not determine IP for $BEST_PEER"
 fi
 echo ""
 
 echo "=========================================="
-echo "✅ Simulation Complete"
+echo "SUCCESS: Simulation Complete"
 echo "=========================================="
 
