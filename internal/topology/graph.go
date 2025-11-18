@@ -55,16 +55,15 @@ func (g *Graph) Upsert(nodeID string, region string, rtt int, neighbors []string
 		if neighbor == "" || neighbor == nodeID {
 			continue
 		}
-		node.Neighbors[neighbor] = struct{}{}
-		// Only add reverse edge if neighbor already exists in the graph.
-		// This prevents "ghost" nodes being recreated solely from other peers'
-		// neighbor lists after they have been removed.
-		if other, ok := g.nodes[neighbor]; ok {
-			if other.Neighbors == nil {
-				other.Neighbors = make(map[string]struct{})
-			}
-			other.Neighbors[nodeID] = struct{}{}
+		other, ok := g.nodes[neighbor]
+		if !ok {
+			continue
 		}
+		node.Neighbors[neighbor] = struct{}{}
+		if other.Neighbors == nil {
+			other.Neighbors = make(map[string]struct{})
+		}
+		other.Neighbors[nodeID] = struct{}{}
 	}
 }
 

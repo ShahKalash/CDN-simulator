@@ -130,28 +130,25 @@ func main() {
 </head>
 <body>
   <header>
-    <div>
-      <h1>Peer Network Graph</h1>
-      <div class="subtitle">Live data from <code>/graph</code> (nodes = peers, edges = neighbor links)</div>
+    <h1>Peer Network Graph</h1>
+    <div class="subtitle">
+      Data from <code>/graph</code> &mdash; nodes are peers, edges are neighbor links.
+      <button id="refreshBtn" style="margin-left:12px;padding:4px 10px;border-radius:4px;border:none;background:#2563eb;color:white;cursor:pointer;">Refresh Now</button>
     </div>
-    <button id="refresh-btn">Refresh</button>
   </header>
   <svg id="graph"></svg>
   <div id="tooltip" class="tooltip"></div>
   <script>
     const svg = d3.select("#graph");
-    const tooltip = document.getElementById("tooltip");
-    const refreshBtn = document.getElementById("refresh-btn");
-    let width = window.innerWidth;
-    let height = window.innerHeight - 60;
+    const width = window.innerWidth;
+    const height = window.innerHeight - 60;
     svg.attr("width", width).attr("height", height);
 
-    window.addEventListener("resize", () => {
-      width = window.innerWidth;
-      height = window.innerHeight - 60;
-      svg.attr("width", width).attr("height", height);
-      fetchAndRender();
-    });
+    const tooltip = document.getElementById("tooltip");
+    const linkLayer = svg.append("g").attr("stroke-linecap", "round");
+    const nodeLayer = svg.append("g");
+    let linkSelection = linkLayer.selectAll("line");
+    let nodeSelection = nodeLayer.selectAll("g");
 
     function showTooltip(evt, text) {
       tooltip.textContent = text;
@@ -163,119 +160,107 @@ func main() {
       tooltip.style.opacity = "0";
     }
 
-    function fetchAndRender() {
-      refreshBtn.disabled = true;
-      fetch("/graph?ts=" + Date.now())
-        .then(r => r.json())
-        .then(data => {
-          renderGraph(data);
-          refreshBtn.disabled = false;
-        })
-        .catch(err => {
-          console.error("Failed to load graph:", err);
-          refreshBtn.disabled = false;
-          svg.selectAll("*").remove();
-          svg.append("text")
-            .attr("x", width / 2)
-            .attr("y", height / 2)
-            .attr("text-anchor", "middle")
-            .attr("fill", "#f87171")
-            .text("Failed to load /graph: " + err);
-        });
+    function keyForLink(d) {
+      const src = d.source.id || d.source;
+      const tgt = d.target.id || d.target;
+      return src < tgt ? src + "-" + tgt : tgt + "-" + src;
     }
 
     function renderGraph(data) {
-      svg.selectAll("*").remove();
+      const nodesMap = new Map();
+      const links = [];
 
-        const nodesMap = new Map();
-        const links = [];
+      Object.entries(data).forEach(([peer, neighbors]) => {
+        if (!nodesMap.has(peer)) nodesMap.set(peer, { id: peer });
+        neighbors.forEach(n => {
+          if (!nodesMap.has(n)) nodesMap.set(n, { id: n });
+          if (peer < n) {
+            links.push({ source: peer, target: n });
+          }
+        });
+      });
 
-        Object.entries(data).forEach(([peer, neighbors]) => {
-          if (!nodesMap.has(peer)) nodesMap.set(peer, { id: peer });
-          neighbors.forEach(n => {
-            if (!nodesMap.has(n)) nodesMap.set(n, { id: n });
-            // undirected: only add one direction (peer < n) to avoid duplicate links
-            if (peer < n) {
-              links.push({ source: peer, target: n });
-            }
-          });
+      const nodes = Array.from(nodesMap.values()).sort((a, b) => {
+        const aNum = parseInt(a.id.replace(/[^0-9]/g, ""), 10);
+        const bNum = parseInt(b.id.replace(/[^0-9]/g, ""), 10);
+        if (Number.isNaN(aNum) || Number.isNaN(bNum)) {
+          return a.id.localeCompare(b.id);
+        }
+        return aNum - bNum;
+      });
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) / 2 - 80;
+      nodes.forEach((node, idx) => {
+        const angle = (2 * Math.PI * idx) / nodes.length;
+        node.x = centerX + radius * Math.cos(angle);
+        node.y = centerY + radius * Math.sin(angle);
+      });
+
+      const nodeById = new Map(nodes.map(n => [n.id, n]));
+      const resolvedLinks = links
+        .map(l => {
+          const source = nodeById.get(l.source);
+          const target = nodeById.get(l.target);
+          if (!source || !target) return null;
+          return { source, target };
+        })
+        .filter(Boolean);
+
+      linkSelection = linkSelection
+        .data(resolvedLinks, keyForLink);
+      linkSelection.exit().remove();
+      const linkEnter = linkSelection.enter()
+        .append("line")
+        .attr("class", "link");
+      linkSelection = linkEnter.merge(linkSelection);
+
+      nodeSelection = nodeSelection
+        .data(nodes, d => d.id);
+
+      nodeSelection.exit().remove();
+
+      const nodeEnter = nodeSelection.enter()
+        .append("g")
+        .attr("class", "node");
+
+      nodeEnter.append("circle")
+        .attr("r", 10)
+        .attr("fill", d => d.id.startsWith("peer-") ? "#22c55e" : "#38bdf8")
+        .on("mouseover", (evt, d) => showTooltip(evt, d.id))
+        .on("mouseout", hideTooltip)
+        .on("click", (_, d) => {
+          svg.selectAll(".node").classed("node--selected", n => n.id === d.id);
         });
 
-        const nodes = Array.from(nodesMap.values());
+      nodeEnter.append("text")
+        .attr("x", 0)
+        .attr("y", 22)
+        .attr("text-anchor", "middle")
+        .text(d => d.id);
 
-        const simulation = d3.forceSimulation(nodes)
-          .force("link", d3.forceLink(links).id(d => d.id).distance(80))
-          .force("charge", d3.forceManyBody().strength(-220))
-          .force("center", d3.forceCenter(width / 2, height / 2))
-          .force("collision", d3.forceCollide().radius(22));
+      nodeSelection = nodeEnter.merge(nodeSelection);
+      nodeSelection.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
 
-        const link = svg.append("g")
-          .attr("stroke-linecap", "round")
-          .selectAll("line")
-          .data(links)
-          .enter()
-          .append("line")
-          .attr("class", "link");
-
-        const node = svg.append("g")
-          .selectAll("g")
-          .data(nodes)
-          .enter()
-          .append("g")
-          .attr("class", "node")
-          .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
-
-        node.append("circle")
-          .attr("r", 10)
-          .attr("fill", d => d.id.startsWith("peer-") ? "#22c55e" : "#38bdf8")
-          .on("mouseover", (evt, d) => {
-            showTooltip(evt, d.id);
-          })
-          .on("mouseout", hideTooltip)
-          .on("click", (_, d) => {
-            svg.selectAll(".node").classed("node--selected", n => n.id === d.id);
-          });
-
-        node.append("text")
-          .attr("x", 0)
-          .attr("y", 22)
-          .attr("text-anchor", "middle")
-          .text(d => d.id);
-
-        simulation.on("tick", () => {
-          link
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
-
-          node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
-        });
-
-        function dragstarted(event, d) {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        }
-
-        function dragged(event, d) {
-          d.fx = event.x;
-          d.fy = event.y;
-        }
-
-        function dragended(event, d) {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null;
-          d.fy = null;
-        }
+      linkSelection
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
     }
 
-    refreshBtn.addEventListener("click", fetchAndRender);
-    fetchAndRender();
-    setInterval(fetchAndRender, 15000);
+    function fetchGraph() {
+      fetch("/graph?ts=" + Date.now())
+        .then(r => r.json())
+        .then(renderGraph)
+        .catch(err => {
+          console.error("Failed to load /graph:", err);
+        });
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", fetchGraph);
+    fetchGraph();
   </script>
 </body>
 </html>`))
