@@ -30,6 +30,12 @@ PEER_REGION="${PEER_REGION:-global}"
 PEER_RTT_MS="${PEER_RTT_MS:-25}"
 CACHE_CAPACITY="${CACHE_CAPACITY:-64}"
 HEARTBEAT_INTERVAL_SEC="${HEARTBEAT_INTERVAL_SEC:-30}"
+NEIGHBOR_COUNT="${NEIGHBOR_COUNT:-4}"
+REGION_CHOICES="${REGION_CHOICES:-us-east,us-west,us-central,canada,eu-west,eu-central,eu-north,asia-pacific,asia-southeast,asia-northeast,india,australia,brazil}"
+RANDOMIZE_REGIONS="${RANDOMIZE_REGIONS:-true}"
+RANDOMIZE_RTT_MS="${RANDOMIZE_RTT_MS:-true}"
+MIN_PEER_RTT_MS="${MIN_PEER_RTT_MS:-15}"
+MAX_PEER_RTT_MS="${MAX_PEER_RTT_MS:-120}"
 
 log() {
   printf '[%s] %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*"
@@ -76,20 +82,53 @@ cleanup_existing_peers() {
 neighbors_for_index() {
   local idx="$1"
   local total="$2"
-  local neighbors=()
+  local target="$NEIGHBOR_COUNT"
+  if [[ "$target" -lt 2 ]]; then
+    target=2
+  fi
+
   local prev=$(( (idx + total - 2) % total + 1 ))
   local next=$(( idx % total + 1 ))
-  local skip=$(( (idx + 4 - 1) % total + 1 ))
-  neighbors+=("${PREFIX}-${prev}")
-  neighbors+=("${PREFIX}-${next}")
-  neighbors+=("${PREFIX}-${skip}")
-  local unique=()
-  for n in "${neighbors[@]}"; do
-    if [[ " ${unique[*]} " != *" $n "* ]]; then
-      unique+=("$n")
+
+  local neighbors=("${PREFIX}-${prev}" "${PREFIX}-${next}")
+
+  local seen=" ${neighbors[*]} "
+  while [[ "${#neighbors[@]}" -lt "$target" ]]; do
+    # Random extra peer (skip self)
+    local candidate=$(( RANDOM % total + 1 ))
+    if [[ "$candidate" -eq "$idx" ]]; then
+      continue
     fi
+    local name="${PREFIX}-${candidate}"
+    if [[ "$seen" == *" $name "* ]]; then
+      continue
+    fi
+    neighbors+=("$name")
+    seen+=" $name "
   done
-  IFS=,; echo "${unique[*]}"
+
+  IFS=,; echo "${neighbors[*]}"
+}
+
+choose_random_region() {
+  IFS=',' read -ra regions <<<"$REGION_CHOICES"
+  local count="${#regions[@]}"
+  if [[ "$count" -eq 0 ]]; then
+    echo "$PEER_REGION"
+    return
+  fi
+  local pick=$(( RANDOM % count ))
+  echo "${regions[$pick]}"
+}
+
+random_rtt_ms() {
+  local min="$MIN_PEER_RTT_MS"
+  local max="$MAX_PEER_RTT_MS"
+  if [[ "$max" -le "$min" ]]; then
+    echo "$min"
+    return
+  fi
+  echo $(( min + RANDOM % (max - min + 1) ))
 }
 
 start_peer() {
@@ -97,6 +136,14 @@ start_peer() {
   local name="${PREFIX}-${idx}"
   local neighbors
   neighbors=$(neighbors_for_index "$idx" "$COUNT")
+  local peer_region="$PEER_REGION"
+  if [[ "$RANDOMIZE_REGIONS" == "true" ]]; then
+    peer_region=$(choose_random_region)
+  fi
+  local peer_rtt="$PEER_RTT_MS"
+  if [[ "$RANDOMIZE_RTT_MS" == "true" ]]; then
+    peer_rtt=$(random_rtt_ms)
+  fi
   if docker ps -a --format '{{.Names}}' | grep -Fxq "$name"; then
     log "Peer $name already exists, skipping"
     return
@@ -115,8 +162,8 @@ start_peer() {
     -e "TRACKER_URL=$TRACKER_URL" \
     -e "SIGNAL_URL=$SIGNAL_URL" \
     -e "PEER_ROOM=$PEER_ROOM" \
-    -e "PEER_REGION=$PEER_REGION" \
-    -e "PEER_RTT_MS=$PEER_RTT_MS" \
+    -e "PEER_REGION=$peer_region" \
+    -e "PEER_RTT_MS=$peer_rtt" \
     -e "CACHE_CAPACITY=$CACHE_CAPACITY" \
     -e "HEARTBEAT_INTERVAL_SEC=$HEARTBEAT_INTERVAL_SEC" \
     "$IMAGE" >/dev/null

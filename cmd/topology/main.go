@@ -59,6 +59,227 @@ func main() {
 	mux.HandleFunc("/graph", func(w http.ResponseWriter, r *http.Request) {
 		topology.WriteJSON(w, http.StatusOK, graph.Snapshot())
 	})
+	mux.HandleFunc("/graph/ui", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		// Simple D3 force-directed graph that fetches /graph JSON from this service
+		_, _ = w.Write([]byte(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Peer Graph Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050816;
+      color: #e5e7eb;
+    }
+    header {
+      padding: 12px 20px;
+      border-bottom: 1px solid #1f2933;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%);
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 4px 0;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    #graph {
+      width: 100vw;
+      height: calc(100vh - 60px);
+    }
+    .link {
+      stroke: #4b5563;
+      stroke-opacity: 0.7;
+      stroke-width: 1.4px;
+    }
+    .node circle {
+      stroke: #0f172a;
+      stroke-width: 1.5px;
+      cursor: pointer;
+    }
+    .node text {
+      font-size: 11px;
+      fill: #e5e7eb;
+      pointer-events: none;
+    }
+    .node--selected circle {
+      stroke: #facc15;
+      stroke-width: 3px;
+    }
+    .tooltip {
+      position: fixed;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      white-space: nowrap;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Peer Network Graph</h1>
+      <div class="subtitle">Live data from <code>/graph</code> (nodes = peers, edges = neighbor links)</div>
+    </div>
+    <button id="refresh-btn">Refresh</button>
+  </header>
+  <svg id="graph"></svg>
+  <div id="tooltip" class="tooltip"></div>
+  <script>
+    const svg = d3.select("#graph");
+    const tooltip = document.getElementById("tooltip");
+    const refreshBtn = document.getElementById("refresh-btn");
+    let width = window.innerWidth;
+    let height = window.innerHeight - 60;
+    svg.attr("width", width).attr("height", height);
+
+    window.addEventListener("resize", () => {
+      width = window.innerWidth;
+      height = window.innerHeight - 60;
+      svg.attr("width", width).attr("height", height);
+      fetchAndRender();
+    });
+
+    function showTooltip(evt, text) {
+      tooltip.textContent = text;
+      tooltip.style.left = (evt.clientX + 10) + "px";
+      tooltip.style.top = (evt.clientY + 10) + "px";
+      tooltip.style.opacity = "1";
+    }
+    function hideTooltip() {
+      tooltip.style.opacity = "0";
+    }
+
+    function fetchAndRender() {
+      refreshBtn.disabled = true;
+      fetch("/graph?ts=" + Date.now())
+        .then(r => r.json())
+        .then(data => {
+          renderGraph(data);
+          refreshBtn.disabled = false;
+        })
+        .catch(err => {
+          console.error("Failed to load graph:", err);
+          refreshBtn.disabled = false;
+          svg.selectAll("*").remove();
+          svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", height / 2)
+            .attr("text-anchor", "middle")
+            .attr("fill", "#f87171")
+            .text("Failed to load /graph: " + err);
+        });
+    }
+
+    function renderGraph(data) {
+      svg.selectAll("*").remove();
+
+        const nodesMap = new Map();
+        const links = [];
+
+        Object.entries(data).forEach(([peer, neighbors]) => {
+          if (!nodesMap.has(peer)) nodesMap.set(peer, { id: peer });
+          neighbors.forEach(n => {
+            if (!nodesMap.has(n)) nodesMap.set(n, { id: n });
+            // undirected: only add one direction (peer < n) to avoid duplicate links
+            if (peer < n) {
+              links.push({ source: peer, target: n });
+            }
+          });
+        });
+
+        const nodes = Array.from(nodesMap.values());
+
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id).distance(80))
+          .force("charge", d3.forceManyBody().strength(-220))
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force("collision", d3.forceCollide().radius(22));
+
+        const link = svg.append("g")
+          .attr("stroke-linecap", "round")
+          .selectAll("line")
+          .data(links)
+          .enter()
+          .append("line")
+          .attr("class", "link");
+
+        const node = svg.append("g")
+          .selectAll("g")
+          .data(nodes)
+          .enter()
+          .append("g")
+          .attr("class", "node")
+          .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+        node.append("circle")
+          .attr("r", 10)
+          .attr("fill", d => d.id.startsWith("peer-") ? "#22c55e" : "#38bdf8")
+          .on("mouseover", (evt, d) => {
+            showTooltip(evt, d.id);
+          })
+          .on("mouseout", hideTooltip)
+          .on("click", (_, d) => {
+            svg.selectAll(".node").classed("node--selected", n => n.id === d.id);
+          });
+
+        node.append("text")
+          .attr("x", 0)
+          .attr("y", 22)
+          .attr("text-anchor", "middle")
+          .text(d => d.id);
+
+        simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
+        });
+
+        function dragstarted(event, d) {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+          d.fx = event.x;
+          d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+    }
+
+    refreshBtn.addEventListener("click", fetchAndRender);
+    fetchAndRender();
+    setInterval(fetchAndRender, 15000);
+  </script>
+</body>
+</html>`))
+	})
 	mux.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) {
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
