@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE="${IMAGE:-peer-node:latest}"
-COUNT="${COUNT:-160}"
+COUNT="${COUNT:-30}"
 MAX_COUNT="${MAX_COUNT:-160}"
 PREFIX="${PREFIX:-peer}"
 PEER_NETWORK="${PEER_NETWORK:-micro-net}"
@@ -23,6 +23,13 @@ PEER_PORT="${PEER_PORT:-8080}"
 MEMORY_LIMIT="${MEMORY_LIMIT:-15m}"
 CPU_LIMIT="${CPU_LIMIT:-0.05}"
 PIDS_LIMIT="${PIDS_LIMIT:-50}"
+TRACKER_URL="${TRACKER_URL:-http://tracker:7070}"
+SIGNAL_URL="${SIGNAL_URL:-ws://signalling:7080/ws}"
+PEER_ROOM="${PEER_ROOM:-default}"
+PEER_REGION="${PEER_REGION:-global}"
+PEER_RTT_MS="${PEER_RTT_MS:-25}"
+CACHE_CAPACITY="${CACHE_CAPACITY:-64}"
+HEARTBEAT_INTERVAL_SEC="${HEARTBEAT_INTERVAL_SEC:-30}"
 
 log() {
   printf '[%s] %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*"
@@ -105,6 +112,13 @@ start_peer() {
     -e "PEER_NAME=$name" \
     -e "PEER_PORT=$PEER_PORT" \
     -e "PEER_NEIGHBORS=$neighbors" \
+    -e "TRACKER_URL=$TRACKER_URL" \
+    -e "SIGNAL_URL=$SIGNAL_URL" \
+    -e "PEER_ROOM=$PEER_ROOM" \
+    -e "PEER_REGION=$PEER_REGION" \
+    -e "PEER_RTT_MS=$PEER_RTT_MS" \
+    -e "CACHE_CAPACITY=$CACHE_CAPACITY" \
+    -e "HEARTBEAT_INTERVAL_SEC=$HEARTBEAT_INTERVAL_SEC" \
     "$IMAGE" >/dev/null
 }
 

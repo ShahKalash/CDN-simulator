@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - micro-net
+
+  topology:
+    build:
+      context: .
+      dockerfile: Dockerfile.topology
+    restart: unless-stopped
+    environment:
+      - TOPOLOGY_ADDR=:8090
+    ports:
+      - "8090:8090"
+    networks:
+      - micro-net
+
+  tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile.tracker
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+      - TOPOLOGY_URL=http://topology:8090
+      - TRACKER_ADDR=:7070
+    depends_on:
+      - redis
+      - topology
+    ports:
+      - "7070:7070"
+    networks:
+      - micro-net
+
+  signalling:
+    build:
+      context: .
+      dockerfile: Dockerfile.signalling
+    restart: unless-stopped
+    environment:
+      - SIGNAL_ADDR=:7080
+    depends_on:
+      - tracker
+      - topology
+    ports:
+      - "7080:7080"
+    networks:
+      - micro-net
+
+networks:
+  micro-net:
+    name: micro-net
+
