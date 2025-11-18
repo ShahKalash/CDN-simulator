@@ -56,4 +56,3 @@ services:
 networks:
   micro-net:
     name: micro-net
-
