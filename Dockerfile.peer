@@ -1,0 +1,16 @@
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+COPY cmd/ cmd/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /peer-node ./cmd/peer
+
+FROM alpine:3.20
+RUN adduser -D peer
+USER peer
+WORKDIR /home/peer
+COPY --from=builder /peer-node /usr/local/bin/peer-node
+ENV PEER_PORT=8080
+EXPOSE 8080
+ENTRYPOINT ["peer-node"]
+
