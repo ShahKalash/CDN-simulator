@@ -300,8 +300,20 @@ func main() {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		
+		// Calculate estimated path RTT
+		// For now, we estimate based on number of hops (each hop adds ~10-25ms)
+		// In a real implementation, this would query actual RTT measurements
+		estimatedRTT := 0
+		if len(path) > 1 {
+			// Estimate: first hop RTT + (additional hops * 15ms per hop)
+			estimatedRTT = 25 + (len(path)-2)*15
+		}
+		
 		topology.WriteJSON(w, http.StatusOK, map[string]any{
-			"path": path,
+			"path":        path,
+			"hops":       len(path) - 1,
+			"estimated_rtt_ms": estimatedRTT,
 		})
 	})
 

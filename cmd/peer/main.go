@@ -16,6 +16,7 @@ import (
 	"time"
 
 	cachepkg "cloud_project/internal/peer/cache"
+	rttpkg "cloud_project/internal/peer/rtt"
 	signalclient "cloud_project/internal/peer/signalling"
 	trackerclient "cloud_project/internal/peer/tracker"
 )
@@ -40,6 +41,8 @@ type peerApp struct {
 	signal       *signalclient.Client
 	server       *http.Server
 	heartbeatTrg chan struct{}
+	rttMeasurer  *rttpkg.Measurer
+	httpClient   *http.Client
 }
 
 func newPeerApp(cfg peerConfig) *peerApp {
@@ -48,6 +51,8 @@ func newPeerApp(cfg peerConfig) *peerApp {
 		cache:        cachepkg.NewLRU(cfg.CacheCapacity),
 		tracker:      trackerclient.NewClient(cfg.TrackerURL),
 		heartbeatTrg: make(chan struct{}, 1),
+		rttMeasurer:  rttpkg.NewMeasurer(),
+		httpClient:   &http.Client{Timeout: 5 * time.Second},
 	}
 	if cfg.SignalURL != "" {
 		app.signal = signalclient.NewClient(cfg.SignalURL, cfg.Room, cfg.Name, cfg.Neighbors)
@@ -160,7 +165,13 @@ func (a *peerApp) startHTTP(ctx context.Context) *http.Server {
 		}
 		switch r.Method {
 		case http.MethodGet:
+			// Measure RTT for this request
+			start := time.Now()
 			seg, ok := a.cache.Get(id)
+			rtt := int(time.Since(start).Milliseconds())
+			
+			// Update RTT measurement for this peer (from requester's perspective)
+			// The requester will measure the full round-trip
 			if !ok {
 				http.NotFound(w, r)
 				return
@@ -170,9 +181,21 @@ func (a *peerApp) startHTTP(ctx context.Context) *http.Server {
 				Payload: base64.StdEncoding.EncodeToString(seg.Data),
 			}
 			writeJSON(w, resp)
+			_ = rtt // RTT measured here is just processing time, not network RTT
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
+	})
+	mux.HandleFunc("/rtt", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		allRTTs := a.rttMeasurer.GetAll()
+		writeJSON(w, map[string]any{
+			"rtts":  allRTTs,
+			"average": a.rttMeasurer.GetAverage(),
+		})
 	})
 
 	server := &http.Server{
@@ -240,16 +263,51 @@ func (a *peerApp) emitAnnounce(ctx context.Context) {
 		return
 	}
 	segments := a.cache.Keys()
+	
+	// Measure RTT to tracker
+	trackerRTT := a.rttMeasurer.Get("tracker")
+	if trackerRTT == 0 {
+		// First time, measure it
+		url := fmt.Sprintf("%s/healthz", a.cfg.TrackerURL)
+		if rtt, err := a.rttMeasurer.MeasureHTTP(ctx, a.httpClient, http.MethodGet, url); err == nil {
+			a.rttMeasurer.Update("tracker", rtt)
+			trackerRTT = rtt
+		} else {
+			// Fallback to average or default
+			avg := a.rttMeasurer.GetAverage()
+			if avg == 0 {
+				trackerRTT = a.cfg.RTTms // Use static fallback
+			} else {
+				trackerRTT = avg
+			}
+		}
+	}
+	
+	// Use average RTT to neighbors as our representative RTT
+	avgNeighborRTT := a.calculateAverageNeighborRTT()
+	if avgNeighborRTT == 0 {
+		avgNeighborRTT = trackerRTT
+	}
+	if avgNeighborRTT == 0 {
+		avgNeighborRTT = a.cfg.RTTms // Final fallback
+	}
+	
 	payload := trackerclient.AnnouncePayload{
 		PeerID:    a.cfg.Name,
 		Room:      a.cfg.Room,
 		Region:    a.cfg.Region,
-		RTTms:     a.cfg.RTTms,
+		RTTms:     avgNeighborRTT, // Use measured RTT instead of static
 		Segments:  segments,
 		Neighbors: a.cfg.Neighbors,
 	}
 	if err := a.tracker.Announce(ctx, payload); err != nil {
 		log.Printf("[%s] tracker announce failed: %v", a.cfg.Name, err)
+	} else {
+		// Measure RTT to tracker after successful announce
+		url := fmt.Sprintf("%s/healthz", a.cfg.TrackerURL)
+		if rtt, err := a.rttMeasurer.MeasureHTTP(ctx, a.httpClient, http.MethodGet, url); err == nil {
+			a.rttMeasurer.Update("tracker", rtt)
+		}
 	}
 }
 
@@ -265,7 +323,71 @@ func (a *peerApp) emitHeartbeat(ctx context.Context) {
 	}
 	if err := a.tracker.Heartbeat(ctx, payload); err != nil {
 		log.Printf("[%s] tracker heartbeat failed: %v", a.cfg.Name, err)
+	} else {
+		// Measure RTT to tracker after successful heartbeat
+		url := fmt.Sprintf("%s/healthz", a.cfg.TrackerURL)
+		if rtt, err := a.rttMeasurer.MeasureHTTP(ctx, a.httpClient, http.MethodGet, url); err == nil {
+			a.rttMeasurer.Update("tracker", rtt)
+		}
 	}
+}
+
+// calculateAverageNeighborRTT calculates the average RTT to all neighbors
+func (a *peerApp) calculateAverageNeighborRTT() int {
+	if len(a.cfg.Neighbors) == 0 {
+		return 0
+	}
+	sum := 0
+	count := 0
+	for _, neighbor := range a.cfg.Neighbors {
+		rtt := a.rttMeasurer.Get(neighbor)
+		if rtt > 0 {
+			sum += rtt
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / count
+}
+
+// fetchSegmentFromPeer fetches a segment from another peer and measures RTT
+// Returns the segment data, RTT in milliseconds, and any error
+func (a *peerApp) fetchSegmentFromPeer(ctx context.Context, peerID, segmentID string) ([]byte, int, error) {
+	url := fmt.Sprintf("http://%s:%s/segments/%s", peerID, a.cfg.Port, segmentID)
+	
+	// Measure RTT while fetching
+	start := time.Now()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	rtt := int(time.Since(start).Milliseconds())
+	
+	// Update RTT measurement for this peer
+	a.rttMeasurer.Update(peerID, rtt)
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, rtt, fmt.Errorf("peer returned status %d", resp.StatusCode)
+	}
+	
+	var segResp fetchSegmentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&segResp); err != nil {
+		return nil, rtt, err
+	}
+	
+	data, err := base64.StdEncoding.DecodeString(segResp.Payload)
+	if err != nil {
+		return nil, rtt, fmt.Errorf("invalid base64 payload: %w", err)
+	}
+	
+	return data, rtt, nil
 }
 
 func (a *peerApp) startNeighborProbe(ctx context.Context) {
@@ -278,12 +400,15 @@ func (a *peerApp) startNeighborProbe(ctx context.Context) {
 		case <-ticker.C:
 			for _, neighbor := range a.cfg.Neighbors {
 				url := fmt.Sprintf("http://%s:%s/health", neighbor, a.cfg.Port)
-				resp, err := client.Get(url)
+				// Measure RTT to neighbor
+				rtt, err := a.rttMeasurer.MeasureHTTP(ctx, &client, http.MethodGet, url)
 				if err != nil {
 					log.Printf("[%s] neighbor %s unreachable: %v", a.cfg.Name, neighbor, err)
 					continue
 				}
-				resp.Body.Close()
+				// Update RTT measurement for this neighbor
+				a.rttMeasurer.Update(neighbor, rtt)
+				log.Printf("[%s] neighbor %s RTT: %dms", a.cfg.Name, neighbor, rtt)
 			}
 		}
 	}

@@ -70,3 +70,22 @@ func (c *Client) post(ctx context.Context, path string, body any) error {
 	}
 	return nil
 }
+
+// MeasureRTT measures the RTT to the tracker
+func (c *Client) MeasureRTT(ctx context.Context) (int, error) {
+	if c.baseURL == "" {
+		return 0, fmt.Errorf("tracker url not configured")
+	}
+	start := time.Now()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/healthz", nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	rtt := int(time.Since(start).Milliseconds())
+	return rtt, nil
+}
