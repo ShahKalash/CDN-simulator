@@ -149,6 +149,7 @@ func main() {
     const nodeLayer = svg.append("g");
     let linkSelection = linkLayer.selectAll("line");
     let nodeSelection = nodeLayer.selectAll("g");
+    const canonicalOrder = [];
 
     function showTooltip(evt, text) {
       tooltip.textContent = text;
@@ -166,19 +167,27 @@ func main() {
       return src < tgt ? src + "-" + tgt : tgt + "-" + src;
     }
 
+    function canonicalKey(a, b) {
+      return a < b ? a + "::" + b : b + "::" + a;
+    }
+
     function renderGraph(data) {
       const nodesMap = new Map();
-      const links = [];
+      const linkMap = new Map();
+      console.log(data);
 
       Object.entries(data).forEach(([peer, neighbors]) => {
         if (!nodesMap.has(peer)) nodesMap.set(peer, { id: peer });
         neighbors.forEach(n => {
           if (!nodesMap.has(n)) nodesMap.set(n, { id: n });
-          if (peer < n) {
-            links.push({ source: peer, target: n });
+          const key = canonicalKey(peer, n);
+          if (!linkMap.has(key)) {
+            linkMap.set(key, { source: peer, target: n });
           }
         });
       });
+
+      const links = Array.from(linkMap.values());
 
       const nodes = Array.from(nodesMap.values()).sort((a, b) => {
         const aNum = parseInt(a.id.replace(/[^0-9]/g, ""), 10);
@@ -189,13 +198,27 @@ func main() {
         return aNum - bNum;
       });
 
+      nodes.forEach(node => {
+        if (!canonicalOrder.includes(node.id)) {
+          canonicalOrder.push(node.id);
+        }
+      });
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) / 2 - 80;
-      nodes.forEach((node, idx) => {
-        const angle = (2 * Math.PI * idx) / nodes.length;
-        node.x = centerX + radius * Math.cos(angle);
-        node.y = centerY + radius * Math.sin(angle);
+      const count = canonicalOrder.length || 1;
+      const positionMap = new Map();
+      canonicalOrder.forEach((id, idx) => {
+        const angle = (2 * Math.PI * idx) / count;
+        positionMap.set(id, {
+          x: centerX + radius * Math.cos(angle),
+          y: centerY + radius * Math.sin(angle),
+        });
+      });
+      nodes.forEach(node => {
+        const pos = positionMap.get(node.id);
+        node.x = pos?.x ?? centerX;
+        node.y = pos?.y ?? centerY;
       });
 
       const nodeById = new Map(nodes.map(n => [n.id, n]));
