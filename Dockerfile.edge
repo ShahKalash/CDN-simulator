@@ -1,0 +1,19 @@
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/edge cmd/edge/
+COPY internal/ internal/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /edge-server ./cmd/edge
+
+FROM alpine:3.20
+RUN adduser -D edge
+USER edge
+WORKDIR /home/edge
+COPY --from=builder /edge-server /usr/local/bin/edge-server
+ENV EDGE_PORT=8082
+EXPOSE 8082
+ENTRYPOINT ["edge-server"]
+
+
+

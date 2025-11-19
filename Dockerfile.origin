@@ -1,0 +1,21 @@
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/origin cmd/origin/
+COPY internal/ internal/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /origin-server ./cmd/origin
+
+FROM alpine:3.20
+RUN apk add --no-cache ffmpeg postgresql-client
+RUN adduser -D origin
+USER origin
+WORKDIR /home/origin
+COPY --from=builder /origin-server /usr/local/bin/origin-server
+COPY Rick-Roll-Sound-Effect.mp3 /home/origin/
+ENV ORIGIN_PORT=8081
+EXPOSE 8081
+ENTRYPOINT ["origin-server"]
+
+
+

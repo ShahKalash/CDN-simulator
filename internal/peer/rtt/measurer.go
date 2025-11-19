@@ -2,7 +2,6 @@ package rtt
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -101,7 +100,6 @@ func (m *Measurer) CalculatePathRTT(path []string) int {
 	
 	totalRTT := 0
 	for i := 0; i < len(path)-1; i++ {
-		from := path[i]
 		to := path[i+1]
 		
 		// Get RTT for this hop

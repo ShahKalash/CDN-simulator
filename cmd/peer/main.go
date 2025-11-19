@@ -26,7 +26,9 @@ type peerConfig struct {
 	Port              string
 	Neighbors         []string
 	TrackerURL        string
+	TopologyURL       string
 	SignalURL         string
+	EdgeURLs          []string // List of edge server URLs
 	Room              string
 	Region            string
 	RTTms             int
@@ -71,7 +73,16 @@ func loadConfig() peerConfig {
 		}
 	}
 	trackerURL := getenv("TRACKER_URL", "http://localhost:7070")
+	topologyURL := getenv("TOPOLOGY_URL", "http://localhost:8090")
 	signalURL := getenv("SIGNAL_URL", "ws://localhost:7080/ws")
+	rawEdgeURLs := strings.TrimSpace(os.Getenv("EDGE_URLS"))
+	var edgeURLs []string
+	if rawEdgeURLs != "" {
+		edgeURLs = strings.Split(rawEdgeURLs, ",")
+		for i := range edgeURLs {
+			edgeURLs[i] = strings.TrimSpace(edgeURLs[i])
+		}
+	}
 	room := getenv("PEER_ROOM", "default")
 	region := getenv("PEER_REGION", "global")
 	rtt := getenvInt("PEER_RTT_MS", 25)
@@ -83,7 +94,9 @@ func loadConfig() peerConfig {
 		Port:              port,
 		Neighbors:         neighbors,
 		TrackerURL:        trackerURL,
+		TopologyURL:       topologyURL,
 		SignalURL:         signalURL,
+		EdgeURLs:          edgeURLs,
 		Room:              room,
 		Region:            region,
 		RTTms:             rtt,
@@ -195,6 +208,57 @@ func (a *peerApp) startHTTP(ctx context.Context) *http.Server {
 		writeJSON(w, map[string]any{
 			"rtts":  allRTTs,
 			"average": a.rttMeasurer.GetAverage(),
+		})
+	})
+	mux.HandleFunc("/request/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		segmentID := strings.TrimPrefix(r.URL.Path, "/request/")
+		if segmentID == "" {
+			http.Error(w, "segment id required", http.StatusBadRequest)
+			return
+		}
+		
+		// Use the full routing logic
+		result, err := a.requestSegment(r.Context(), segmentID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		
+		resp := map[string]any{
+			"id":           segmentID,
+			"payload":      base64.StdEncoding.EncodeToString(result.Data),
+			"source":       result.Source,
+			"path":         result.Path,
+			"hops":         result.Hops,
+			"rtt_ms":       result.RTTms,
+			"est_rtt_ms":   result.EstRTTms,
+		}
+		writeJSON(w, resp)
+	})
+	mux.HandleFunc("/songs/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		songID := strings.TrimPrefix(r.URL.Path, "/songs/")
+		if songID == "" {
+			http.Error(w, "song id required", http.StatusBadRequest)
+			return
+		}
+		
+		// Request entire song and distribute segments
+		if err := a.requestSong(r.Context(), songID); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		writeJSON(w, map[string]string{
+			"status": "distributed",
+			"song_id": songID,
 		})
 	})
 
@@ -388,6 +452,517 @@ func (a *peerApp) fetchSegmentFromPeer(ctx context.Context, peerID, segmentID st
 	}
 	
 	return data, rtt, nil
+}
+
+// fetchSegmentFromEdge fetches a segment from an edge server
+func (a *peerApp) fetchSegmentFromEdge(ctx context.Context, edgeURL, segmentID string) ([]byte, int, error) {
+	url := fmt.Sprintf("%s/segments/%s", edgeURL, segmentID)
+	
+	start := time.Now()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	rtt := int(time.Since(start).Milliseconds())
+	
+	// Update RTT measurement for this edge
+	a.rttMeasurer.Update(edgeURL, rtt)
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, rtt, fmt.Errorf("edge returned status %d", resp.StatusCode)
+	}
+	
+	var segResp fetchSegmentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&segResp); err != nil {
+		return nil, rtt, err
+	}
+	
+	data, err := base64.StdEncoding.DecodeString(segResp.Payload)
+	if err != nil {
+		return nil, rtt, fmt.Errorf("invalid base64 payload: %w", err)
+	}
+	
+	return data, rtt, nil
+}
+
+// findBestEdge finds the best edge server based on shortest path and RTT
+func (a *peerApp) findBestEdge(ctx context.Context) (string, error) {
+	if len(a.cfg.EdgeURLs) == 0 {
+		return "", fmt.Errorf("no edge servers configured")
+	}
+	
+	// If only one edge, return it
+	if len(a.cfg.EdgeURLs) == 1 {
+		return a.cfg.EdgeURLs[0], nil
+	}
+	
+	// Measure RTT to all edges and find best
+	bestEdge := a.cfg.EdgeURLs[0]
+	bestRTT := a.rttMeasurer.Get(bestEdge)
+	if bestRTT == 0 {
+		// Measure it
+		url := fmt.Sprintf("%s/health", bestEdge)
+		if rtt, err := a.rttMeasurer.MeasureHTTP(ctx, a.httpClient, http.MethodGet, url); err == nil {
+			a.rttMeasurer.Update(bestEdge, rtt)
+			bestRTT = rtt
+		}
+	}
+	
+	for _, edgeURL := range a.cfg.EdgeURLs[1:] {
+		rtt := a.rttMeasurer.Get(edgeURL)
+		if rtt == 0 {
+			// Measure it
+			url := fmt.Sprintf("%s/health", edgeURL)
+			if measuredRTT, err := a.rttMeasurer.MeasureHTTP(ctx, a.httpClient, http.MethodGet, url); err == nil {
+				a.rttMeasurer.Update(edgeURL, measuredRTT)
+				rtt = measuredRTT
+			}
+		}
+		if rtt > 0 && (bestRTT == 0 || rtt < bestRTT) {
+			bestRTT = rtt
+			bestEdge = edgeURL
+		}
+	}
+	
+	return bestEdge, nil
+}
+
+// segmentRequestResult holds the result of a segment request including path information
+type segmentRequestResult struct {
+	Data      []byte
+	Source    string
+	Path      []string
+	Hops      int
+	RTTms     int
+	EstRTTms  int
+}
+
+// requestSegment handles the full routing logic: P2P → Edge → Origin
+// Returns segment data, source type, path info, and error
+func (a *peerApp) requestSegment(ctx context.Context, segmentID string) (*segmentRequestResult, error) {
+	// Step 1: Check local cache
+	if seg, ok := a.cache.Get(segmentID); ok {
+		return &segmentRequestResult{
+			Data:     seg.Data,
+			Source:   "local",
+			Path:     []string{a.cfg.Name},
+			Hops:     0,
+			RTTms:    0,
+			EstRTTms: 0,
+		}, nil
+	}
+	
+	// Step 2: Try P2P - query tracker
+	type trackerPeer struct {
+		PeerID string `json:"peer_id"`
+		Region string `json:"region"`
+		RTTms  int    `json:"rtt_ms"`
+	}
+	
+	type trackerResponse struct {
+		Segment string        `json:"segment"`
+		Peers   []trackerPeer `json:"peers"`
+	}
+	
+	trackerURL := fmt.Sprintf("%s/segments/%s?region=%s", a.cfg.TrackerURL, segmentID, a.cfg.Region)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, trackerURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	
+	resp, err := a.httpClient.Do(req)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		var trackerResp trackerResponse
+		if err := json.NewDecoder(resp.Body).Decode(&trackerResp); err == nil {
+			resp.Body.Close()
+			
+			// Try fetching from best peer
+			for _, peer := range trackerResp.Peers {
+				// Get path information to peer
+				pathURL := fmt.Sprintf("%s/path?from=%s&to=%s", a.cfg.TopologyURL, a.cfg.Name, peer.PeerID)
+				pathReq, err := http.NewRequestWithContext(ctx, http.MethodGet, pathURL, nil)
+				var pathInfo map[string]interface{}
+				if err == nil {
+					pathResp, err := a.httpClient.Do(pathReq)
+					if err == nil && pathResp.StatusCode == http.StatusOK {
+						json.NewDecoder(pathResp.Body).Decode(&pathInfo)
+						pathResp.Body.Close()
+					}
+				}
+				
+				data, rtt, err := a.fetchSegmentFromPeer(ctx, peer.PeerID, segmentID)
+				if err == nil {
+					// Store in cache
+					a.cache.Put(cachepkg.Segment{ID: segmentID, Data: data})
+					a.triggerHeartbeat()
+					
+					// Extract path information
+					path := []string{a.cfg.Name, peer.PeerID}
+					hops := 1
+					estRTT := rtt
+					if pathInfo != nil {
+						if p, ok := pathInfo["path"].([]interface{}); ok {
+							path = make([]string, 0, len(p))
+							for _, node := range p {
+								if s, ok := node.(string); ok {
+									path = append(path, s)
+								}
+							}
+						}
+						if h, ok := pathInfo["hops"].(float64); ok {
+							hops = int(h)
+						}
+						if r, ok := pathInfo["estimated_rtt_ms"].(float64); ok {
+							estRTT = int(r)
+						}
+					}
+					
+					log.Printf("[%s] Fetched segment %s from P2P peer %s | Path: %v | Hops: %d | Est. RTT: %dms | Actual RTT: %dms", 
+						a.cfg.Name, segmentID, peer.PeerID, path, hops, estRTT, rtt)
+					
+					return &segmentRequestResult{
+						Data:     data,
+						Source:   "p2p",
+						Path:     path,
+						Hops:     hops,
+						RTTms:    rtt,
+						EstRTTms: estRTT,
+					}, nil
+				}
+			}
+		} else {
+			resp.Body.Close()
+		}
+	}
+	
+	// Step 3: Try Edge servers
+	edgeURL, err := a.findBestEdge(ctx)
+	if err == nil {
+		// Get path information to edge
+		edgeName := edgeURL
+		if strings.Contains(edgeURL, "://") {
+			parts := strings.Split(strings.TrimPrefix(edgeURL, "http://"), ":")
+			edgeName = parts[0]
+		}
+		
+		// Query topology for path information
+		pathURL := fmt.Sprintf("%s/path?from=%s&to=%s", a.cfg.TopologyURL, a.cfg.Name, edgeName)
+		pathReq, err := http.NewRequestWithContext(ctx, http.MethodGet, pathURL, nil)
+		var pathInfo map[string]interface{}
+		if err == nil {
+			pathResp, err := a.httpClient.Do(pathReq)
+			if err == nil && pathResp.StatusCode == http.StatusOK {
+				json.NewDecoder(pathResp.Body).Decode(&pathInfo)
+				pathResp.Body.Close()
+			}
+		}
+		
+		data, rtt, err := a.fetchSegmentFromEdge(ctx, edgeURL, segmentID)
+		if err == nil {
+			// Store in cache
+			a.cache.Put(cachepkg.Segment{ID: segmentID, Data: data})
+			a.triggerHeartbeat()
+			
+			// Extract path information
+			path := []string{a.cfg.Name, edgeName}
+			hops := 1
+			estRTT := rtt
+			if pathInfo != nil {
+				if p, ok := pathInfo["path"].([]interface{}); ok {
+					path = make([]string, 0, len(p))
+					for _, node := range p {
+						if s, ok := node.(string); ok {
+							path = append(path, s)
+						}
+					}
+				}
+				if h, ok := pathInfo["hops"].(float64); ok {
+					hops = int(h)
+				}
+				if r, ok := pathInfo["estimated_rtt_ms"].(float64); ok {
+					estRTT = int(r)
+				}
+			}
+			
+			log.Printf("[%s] Fetched segment %s from edge %s | Path: %v | Hops: %d | Est. RTT: %dms | Actual RTT: %dms", 
+				a.cfg.Name, segmentID, edgeURL, path, hops, estRTT, rtt)
+			
+			return &segmentRequestResult{
+				Data:     data,
+				Source:   "edge",
+				Path:     path,
+				Hops:     hops,
+				RTTms:    rtt,
+				EstRTTms: estRTT,
+			}, nil
+		}
+		
+		// Try other edges if first one failed
+		for _, otherEdge := range a.cfg.EdgeURLs {
+			if otherEdge == edgeURL {
+				continue
+			}
+			// Get path to other edge
+			otherEdgeName := otherEdge
+			if strings.Contains(otherEdge, "://") {
+				parts := strings.Split(strings.TrimPrefix(otherEdge, "http://"), ":")
+				otherEdgeName = parts[0]
+			}
+			pathURL := fmt.Sprintf("%s/path?from=%s&to=%s", a.cfg.TopologyURL, a.cfg.Name, otherEdgeName)
+			pathReq, err := http.NewRequestWithContext(ctx, http.MethodGet, pathURL, nil)
+			var otherPathInfo map[string]interface{}
+			if err == nil {
+				pathResp, err := a.httpClient.Do(pathReq)
+				if err == nil && pathResp.StatusCode == http.StatusOK {
+					json.NewDecoder(pathResp.Body).Decode(&otherPathInfo)
+					pathResp.Body.Close()
+				}
+			}
+			
+			data, rtt, err := a.fetchSegmentFromEdge(ctx, otherEdge, segmentID)
+			if err == nil {
+				a.cache.Put(cachepkg.Segment{ID: segmentID, Data: data})
+				a.triggerHeartbeat()
+				
+				path := []string{a.cfg.Name, otherEdgeName}
+				hops := 1
+				estRTT := rtt
+				if otherPathInfo != nil {
+					if p, ok := otherPathInfo["path"].([]interface{}); ok {
+						path = make([]string, 0, len(p))
+						for _, node := range p {
+							if s, ok := node.(string); ok {
+								path = append(path, s)
+							}
+						}
+					}
+					if h, ok := otherPathInfo["hops"].(float64); ok {
+						hops = int(h)
+					}
+					if r, ok := otherPathInfo["estimated_rtt_ms"].(float64); ok {
+						estRTT = int(r)
+					}
+				}
+				
+				log.Printf("[%s] Fetched segment %s from edge %s | Path: %v | Hops: %d | Est. RTT: %dms | Actual RTT: %dms", 
+					a.cfg.Name, segmentID, otherEdge, path, hops, estRTT, rtt)
+				
+				return &segmentRequestResult{
+					Data:     data,
+					Source:   "edge",
+					Path:     path,
+					Hops:     hops,
+					RTTms:    rtt,
+					EstRTTms: estRTT,
+				}, nil
+			}
+		}
+	}
+	
+	return nil, fmt.Errorf("segment not found in P2P network, edge servers, or origin")
+}
+
+// requestSong requests an entire song and distributes segments along the path
+// This handles the initial request case where all caches are empty
+func (a *peerApp) requestSong(ctx context.Context, songID string) error {
+	// Find best edge
+	edgeURL, err := a.findBestEdge(ctx)
+	if err != nil {
+		return fmt.Errorf("no edge servers available: %w", err)
+	}
+	
+	// Extract edge name from URL (e.g., "http://edge-1:8082" -> "edge-1")
+	edgeName := edgeURL
+	if strings.Contains(edgeURL, "://") {
+		parts := strings.Split(strings.TrimPrefix(edgeURL, "http://"), ":")
+		edgeName = parts[0]
+	}
+	
+	// Get path to edge using topology service
+	pathURL := fmt.Sprintf("%s/path?from=%s&to=%s", a.cfg.TopologyURL, a.cfg.Name, edgeName)
+	pathReq, err := http.NewRequestWithContext(ctx, http.MethodGet, pathURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create path request: %w", err)
+	}
+	
+	pathResp, err := a.httpClient.Do(pathReq)
+	if err != nil {
+		return fmt.Errorf("failed to query topology for path: %w", err)
+	}
+	defer pathResp.Body.Close()
+	
+	if pathResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("topology returned status %d for path query", pathResp.StatusCode)
+	}
+	
+	var pathData map[string]interface{}
+	if err := json.NewDecoder(pathResp.Body).Decode(&pathData); err != nil {
+		return fmt.Errorf("failed to decode path response: %w", err)
+	}
+	
+	path, ok := pathData["path"].([]interface{})
+	if !ok || len(path) == 0 {
+		return fmt.Errorf("invalid or empty path from topology")
+	}
+	
+	// Extract path information
+	pathStr := make([]string, 0, len(path))
+	for _, p := range path {
+		if s, ok := p.(string); ok {
+			pathStr = append(pathStr, s)
+		}
+	}
+	
+	hops := 0
+	if h, ok := pathData["hops"].(float64); ok {
+		hops = int(h)
+	}
+	estRTT := 0
+	if r, ok := pathData["estimated_rtt_ms"].(float64); ok {
+		estRTT = int(r)
+	}
+	
+	log.Printf("[%s] Requesting song %s from edge %s | Path: %v | Hops: %d | Est. RTT: %dms", 
+		a.cfg.Name, songID, edgeURL, pathStr, hops, estRTT)
+	
+	// Get all segments for the song from edge
+	segmentsURL := fmt.Sprintf("%s/songs/%s", edgeURL, songID)
+	segReq, err := http.NewRequestWithContext(ctx, http.MethodGet, segmentsURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create segments request: %w", err)
+	}
+	
+	segResp, err := a.httpClient.Do(segReq)
+	if err != nil {
+		return fmt.Errorf("failed to fetch segments from edge: %w", err)
+	}
+	defer segResp.Body.Close()
+	
+	if segResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("edge returned status %d for segments", segResp.StatusCode)
+	}
+	
+	var songData map[string]interface{}
+	if err := json.NewDecoder(segResp.Body).Decode(&songData); err != nil {
+		return fmt.Errorf("failed to decode song data: %w", err)
+	}
+	
+	segments, ok := songData["segments"].([]interface{})
+	if !ok {
+		return fmt.Errorf("invalid segments data from edge")
+	}
+	
+	segmentCount := len(segments)
+	pathLength := len(pathStr)
+	
+	if pathLength == 0 {
+		return fmt.Errorf("empty path, cannot distribute segments")
+	}
+	
+	if segmentCount == 0 {
+		return fmt.Errorf("no segments found for song %s", songID)
+	}
+	
+	// Distribute segments: segmentCount / pathLength per node
+	segmentsPerNode := segmentCount / pathLength
+	if segmentsPerNode == 0 {
+		segmentsPerNode = 1
+	}
+	
+	log.Printf("[%s] Distributing %d segments along path of length %d (%d segments per node)", 
+		a.cfg.Name, segmentCount, pathLength, segmentsPerNode)
+	
+	// Distribute segments to each node in path (excluding ourselves from intermediate distribution)
+	segmentIndex := 0
+	for _, nodeID := range pathStr {
+		if nodeID == a.cfg.Name {
+			// Skip ourselves in the distribution loop - we'll get remaining segments at the end
+			continue
+		}
+		
+		// Assign segmentsPerNode segments to this node
+		for j := 0; j < segmentsPerNode && segmentIndex < segmentCount; j++ {
+			if seg, ok := segments[segmentIndex].(map[string]interface{}); ok {
+				if segID, ok := seg["id"].(string); ok {
+					// Fetch segment from edge and send to intermediate peer
+					data, _, err := a.fetchSegmentFromEdge(ctx, edgeURL, segID)
+					if err == nil {
+						// Send segment to intermediate peer for caching
+						if sendErr := a.sendSegmentToPeer(ctx, nodeID, segID, data); sendErr != nil {
+							log.Printf("[%s] Warning: failed to send segment %s to %s: %v", a.cfg.Name, segID, nodeID, sendErr)
+						}
+					} else {
+						log.Printf("[%s] Warning: failed to fetch segment %s from edge: %v", a.cfg.Name, segID, err)
+					}
+				}
+			}
+			segmentIndex++
+		}
+	}
+	
+	// Requesting peer gets all remaining segments
+	for segmentIndex < segmentCount {
+		if seg, ok := segments[segmentIndex].(map[string]interface{}); ok {
+			if segID, ok := seg["id"].(string); ok {
+				data, _, err := a.fetchSegmentFromEdge(ctx, edgeURL, segID)
+				if err == nil {
+					a.cache.Put(cachepkg.Segment{ID: segID, Data: data})
+				} else {
+					log.Printf("[%s] Warning: failed to fetch segment %s from edge: %v", a.cfg.Name, segID, err)
+				}
+			}
+		}
+		segmentIndex++
+	}
+	
+	// Calculate how many segments were distributed vs cached locally
+	distributedCount := (pathLength - 1) * segmentsPerNode // Excluding ourselves
+	localCount := segmentCount - distributedCount
+	
+	log.Printf("[%s] Successfully distributed song %s: %d segments cached locally, %d segments distributed to %d intermediate nodes", 
+		a.cfg.Name, songID, localCount, distributedCount, pathLength-1)
+	
+	a.triggerHeartbeat()
+	return nil
+}
+
+// sendSegmentToPeer sends a segment to another peer for caching
+func (a *peerApp) sendSegmentToPeer(ctx context.Context, peerID, segmentID string, data []byte) error {
+	url := fmt.Sprintf("http://%s:%s/segments", peerID, a.cfg.Port)
+	payload := base64.StdEncoding.EncodeToString(data)
+	
+	body := map[string]string{
+		"id":      segmentID,
+		"payload": payload,
+	}
+	
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(string(jsonData)))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("peer returned status %d", resp.StatusCode)
+	}
+	
+	return nil
 }
 
 func (a *peerApp) startNeighborProbe(ctx context.Context) {

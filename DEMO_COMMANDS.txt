@@ -1,0 +1,345 @@
+Remove all edge origin and peer Containers
+docker ps -a --format '{{.Names}}' | Select-String -Pattern 'peer-|edge-|origin' | ForEach-Object { $name = $_.Line.Trim(); Write-Host "Stopping and removing $name..."; docker stop $name 2>&1 | Out-Null; docker rm $name 2>&1 | Out-Null }
+================================================================================
+CDN + P2P CONTENT DELIVERY SYSTEM - DEMO COMMANDS
+================================================================================
+Complete sequence of commands to run and test the project for demo
+================================================================================
+
+PREREQUISITES:
+- Docker Desktop must be running
+- Go 1.22+ installed (for running services directly if needed)
+- PowerShell or Bash terminal
+
+================================================================================
+STEP 1: VERIFY DOCKER IS RUNNING
+================================================================================
+
+# Check Docker status
+docker ps
+
+# If Docker Desktop is not running, start it:
+# Windows: Start Docker Desktop from Start Menu
+# Or: Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+================================================================================
+STEP 2: BUILD DOCKER IMAGES
+================================================================================
+
+# Build origin server image
+docker build -t origin-server:latest -f Dockerfile.origin .
+
+# Build edge server image
+docker build -t edge-server:latest -f Dockerfile.edge .
+
+# Build peer node image
+docker build -t peer-node:latest -f Dockerfile.peer .
+
+# Verify images were built
+docker images | Select-String -Pattern "origin-server|edge-server|peer-node"
+
+================================================================================
+STEP 3: START CONTROL PLANE SERVICES
+================================================================================
+
+# Start Redis, Topology, Tracker, and Signalling services
+# Note: If you get network warnings, the docker-compose file is already configured
+# to use the existing micro-net network as external
+docker-compose -f docker-compose.control.yml up -d
+
+# Wait a few seconds for services to start
+Start-Sleep -Seconds 5
+
+# Verify control plane services are running
+docker ps --filter "name=tracker" --filter "name=topology" --filter "name=redis" --filter "name=signalling" --format "table {{.Names}}\t{{.Status}}"
+
+# Check service logs if needed
+docker logs cloud_project-topology-1 --tail 10
+docker logs cloud_project-tracker-1 --tail 10
+
+================================================================================
+STEP 4: DEPLOY PEER NETWORK
+================================================================================
+
+# Deploy origin, edges, and 30 peers with adjacency matrix
+bash scripts/deploy_peer_network_new.sh
+
+# Or with custom peer count (e.g., 10 peers for faster demo):
+# COUNT=10 bash scripts/deploy_peer_network_new.sh
+
+# Wait for deployment to complete (script will show progress)
+# Expected output: "Peer network ready (30 peers)"
+
+================================================================================
+STEP 5: VERIFY DEPLOYMENT
+================================================================================
+
+# Check all containers are running
+docker ps --format "table {{.Names}}\t{{.Status}}" | Select-String -Pattern "origin|edge|peer"
+
+# Count running peers
+docker ps --filter "name=peer-" --format "{{.Names}}" | Measure-Object -Line
+
+# Check origin server logs
+docker logs origin --tail 20
+
+# Check edge server logs
+docker logs edge-1 --tail 10
+docker logs edge-2 --tail 10
+
+# Check a peer's logs
+docker logs peer-1 --tail 10
+
+================================================================================
+STEP 6: TEST ORIGIN SERVER
+================================================================================
+
+# Test origin health endpoint
+docker exec origin wget -qO- http://localhost:8081/health
+
+# Get list of songs/segments from origin
+docker exec origin wget -qO- http://localhost:8081/songs/rickroll
+
+# Request a specific segment from origin
+docker exec origin wget -qO- http://localhost:8081/segments/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id
+
+================================================================================
+STEP 7: TEST EDGE SERVERS
+================================================================================
+
+# Test edge-1 health
+docker exec edge-1 wget -qO- http://localhost:8082/health
+
+# Request segment from edge-1 (will fetch from origin if not cached)
+docker exec edge-1 wget -qO- http://localhost:8082/segments/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id
+
+# Check edge-1 logs to see if it fetched from origin
+docker logs edge-1 --tail 5
+
+# Test edge-2
+docker exec edge-2 wget -qO- http://localhost:8082/health
+
+================================================================================
+STEP 8: TEST PEER REQUESTS (FALLBACK CHAIN)
+================================================================================
+
+# Test peer-1 requesting segment (should go: P2P -> Edge -> Origin)
+docker exec peer-1 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+
+# Expected: {"id": "rickroll/128k/segment000.ts", "source": "edge"}
+
+# Test peer-2 requesting same segment
+docker exec peer-2 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+
+# Request again from peer-1 (should come from local cache)
+docker exec peer-1 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+
+# Expected: {"id": "rickroll/128k/segment000.ts", "source": "local"}
+
+================================================================================
+STEP 9: TEST PEER-TO-PEER SHARING
+================================================================================
+
+# Check if peer-1 has segment in cache
+docker exec peer-1 wget -qO- http://localhost:8080/segments/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id
+
+# Request segment from peer-1 directly (simulating P2P)
+docker exec peer-2 wget -qO- http://peer-1:8080/segments/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id
+
+# Check peer RTT measurements
+docker exec peer-1 wget -qO- http://localhost:8080/rtt | ConvertFrom-Json
+
+================================================================================
+STEP 10: TEST TOPOLOGY SERVICE
+================================================================================
+
+# Check topology service graph
+curl http://localhost:8090/graph
+
+# Or view in browser:
+# http://localhost:8090/graph/ui
+
+# Get path between two peers
+curl "http://localhost:8090/path?from=peer-1&to=peer-10"
+
+================================================================================
+STEP 11: TEST SONG DISTRIBUTION (INITIAL REQUEST)
+================================================================================
+
+# Request entire song from a peer (triggers segment distribution along path)
+docker exec peer-5 wget -qO- http://localhost:8080/songs/rickroll | ConvertFrom-Json
+
+# Check logs to see distribution
+docker logs peer-5 --tail 20
+
+# Check if segments were distributed to intermediate peers
+docker logs peer-1 --tail 10
+docker logs peer-2 --tail 10
+
+================================================================================
+STEP 12: MONITORING AND VERIFICATION
+================================================================================
+
+# Check all peer statuses
+docker ps --filter "name=peer-" --format "table {{.Names}}\t{{.Status}}"
+
+# Check network connections
+docker network inspect micro-net --format "{{.Containers}}" | ConvertFrom-Json
+
+# Check edge connections
+docker network inspect edge-a-net --format "{{.Containers}}" | ConvertFrom-Json
+docker network inspect edge-b-net --format "{{.Containers}}" | ConvertFrom-Json
+
+# Monitor real-time logs (in separate terminal)
+docker logs -f peer-1
+# Press Ctrl+C to stop
+
+# Check database contents (origin)
+docker exec origin-db psql -U media -d hls -c "SELECT COUNT(*) FROM segments;"
+
+# Check edge cache
+docker exec edge-1-db psql -U media -d hls -c "SELECT COUNT(*) FROM segments;"
+
+================================================================================
+STEP 13: DEMO SCENARIOS
+================================================================================
+
+# Scenario 1: First request (all caches empty)
+# - Request from peer-10 (not connected to edge)
+docker exec peer-10 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+# Expected: source = "edge" (fetched from edge, which fetched from origin)
+
+# Scenario 2: Cached request
+docker exec peer-10 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+# Expected: source = "local" (served from peer cache)
+
+# Scenario 3: P2P sharing
+# - peer-1 has segment, peer-20 requests it
+docker exec peer-20 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+# Check if it found via P2P (would need tracker service working)
+
+# Scenario 4: Edge failover
+# - Request from peer connected to edge-1
+docker exec peer-1 wget -qO- http://localhost:8080/request/rickroll/128k/segment000.ts | ConvertFrom-Json | Select-Object id,source
+# If edge-1 fails, should try edge-2
+
+================================================================================
+STEP 14: CLEANUP (After Demo)
+================================================================================
+
+# Stop and remove all containers
+docker ps -a --format "{{.Names}}" | ForEach-Object { 
+    if ($_ -match "peer-|origin|edge|tracker|topology|redis|signalling") { 
+        docker stop $_ 2>&1 | Out-Null
+        docker rm $_ 2>&1 | Out-Null
+    }
+}
+
+# Or use the cleanup function in the script
+# The deploy script has cleanup_existing_peers() that does this
+
+# Stop control plane services
+docker-compose -f docker-compose.control.yml down
+
+# Remove networks (optional)
+docker network rm micro-net edge-a-net edge-b-net origin-net 2>&1 | Out-Null
+
+# Remove volumes (optional - removes database data)
+docker volume ls | Select-String -Pattern "origin|edge" | ForEach-Object {
+    $vol = ($_ -split '\s+')[1]
+    docker volume rm $vol 2>&1 | Out-Null
+}
+
+================================================================================
+TROUBLESHOOTING COMMANDS
+================================================================================
+
+# If Docker build times out:
+# 1. Login to Docker Hub
+docker login
+
+# 2. Check if images already exist
+docker images | Select-String -Pattern "origin|edge|peer"
+
+# 3. Restart Docker Desktop if network issues persist
+
+# If services don't start:
+# Check logs
+docker logs origin --tail 50
+docker logs edge-1 --tail 50
+docker logs peer-1 --tail 50
+
+# Check if ports are in use
+netstat -ano | findstr "8080 8081 8082 7070 7080 8090"
+
+# If topology service not accessible:
+# Run directly with Go
+$env:TOPOLOGY_ADDR=":8090"
+go run cmd/topology/main.go
+
+# If database connection fails:
+# Check PostgreSQL containers
+docker ps --filter "name=-db"
+docker logs origin-db --tail 20
+
+# Test database connection
+docker exec origin-db psql -U media -d hls -c "SELECT 1;"
+
+================================================================================
+QUICK REFERENCE - KEY ENDPOINTS
+================================================================================
+
+Origin Server:
+- Health: http://localhost:8081/health (from host) or http://origin:8081/health (from container)
+- Segments: http://origin:8081/segments/{segment_id}
+- Songs: http://origin:8081/songs/{song_id}
+
+Edge Servers:
+- Health: http://edge-1:8082/health or http://edge-2:8082/health
+- Segments: http://edge-1:8082/segments/{segment_id}
+- Songs: http://edge-1:8082/songs/{song_id}
+
+Peer Nodes:
+- Health: http://peer-{N}:8080/health
+- Request segment: http://peer-{N}:8080/request/{segment_id}
+- Get segment: http://peer-{N}:8080/segments/{segment_id}
+- Request song: http://peer-{N}:8080/songs/{song_id}
+- RTT info: http://peer-{N}:8080/rtt
+
+Control Plane:
+- Topology graph: http://localhost:8090/graph
+- Topology UI: http://localhost:8090/graph/ui
+- Tracker: http://localhost:7070
+- Signalling: ws://localhost:7080/ws
+
+================================================================================
+DEMO FLOW SUGGESTION
+================================================================================
+
+1. Show architecture overview (Origin -> Edges -> Peers)
+2. Deploy network (run deploy script)
+3. Show origin has segments (check logs, query endpoint)
+4. Request from peer-1 (show it goes to edge, then origin)
+5. Request again from peer-1 (show local cache)
+6. Request from peer-2 (show edge cache working)
+7. Show topology graph (http://localhost:8090/graph/ui)
+8. Show RTT measurements
+9. Demonstrate P2P sharing if tracker is working
+10. Show segment distribution for initial song request
+
+================================================================================
+NOTES FOR DEMO
+================================================================================
+
+- Have Docker Desktop running before starting
+- Build images first (can take 2-5 minutes)
+- Wait for all services to start before testing
+- Use smaller peer count (10-15) for faster demo if needed
+- Keep topology service running for path visualization
+- Monitor logs in real-time for better demonstration
+- Have backup: can run services directly with Go if Docker fails
+
+================================================================================
+END OF DEMO COMMANDS
+================================================================================
+

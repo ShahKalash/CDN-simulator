@@ -43,6 +43,24 @@ func main() {
 		graph.Upsert(req.PeerID, req.Region, req.RTTms, req.Neighbors, req.Metadata)
 		w.WriteHeader(http.StatusNoContent)
 	})
+	mux.HandleFunc("/edges", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req upsertRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if req.PeerID == "" {
+			http.Error(w, "peer_id required", http.StatusBadRequest)
+			return
+		}
+		// Register edge as a node in the graph
+		graph.Upsert(req.PeerID, req.Region, req.RTTms, req.Neighbors, req.Metadata)
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("/peers/", func(w http.ResponseWriter, r *http.Request) {
 		peerID := strings.TrimPrefix(r.URL.Path, "/peers/")
 		if peerID == "" {
