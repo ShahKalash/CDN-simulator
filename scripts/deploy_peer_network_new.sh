@@ -98,11 +98,8 @@ generate_adjacency_matrix() {
   
   log "Generating adjacency matrix for $count peers with ${prob} connection probability"
   
-  # Create a temporary file to store matrix
   local matrix_file=$(mktemp)
   
-  # Initialize matrix structure (we'll output as neighbor lists per peer)
-  # For simplicity, we'll generate neighbors directly
   echo "MATRIX_START"
   for i in $(seq 1 "$count"); do
     peer_a="${PREFIX}-${i}"
@@ -111,8 +108,6 @@ generate_adjacency_matrix() {
       if [[ $i -eq $j ]]; then
         continue
       fi
-      # Generate random number 0-999, if < (prob * 1000) then connect
-      # 30% = 300 out of 1000
       threshold=300
       random_val=$((RANDOM % 1000))
       if [[ $random_val -lt $threshold ]]; then
@@ -129,7 +124,6 @@ generate_adjacency_matrix() {
   echo "MATRIX_END"
 }
 
-# Get neighbors for a peer from adjacency matrix
 get_neighbors_from_matrix() {
   local peer_id="$1"
   local matrix_output="$2"
@@ -199,7 +193,7 @@ start_origin() {
     -e "DB_USER=$POSTGRES_USER" \
     -e "DB_PASSWORD=$POSTGRES_PASSWORD" \
     -e "DB_NAME=$POSTGRES_DB" \
-    -e "SONG_PATH=/home/origin/Rick-Roll-Sound-Effect.mp3" \
+    -e "SONG_PATH=/home/origin/Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3" \
     "$ORIGIN_IMAGE" >/dev/null
 }
 
@@ -378,6 +372,10 @@ main() {
   # Connect edges to peer network
   connect_network "$PEER_NETWORK" "$EDGE1_NAME"
   connect_network "$PEER_NETWORK" "$EDGE2_NAME"
+  
+  # Connect edges to origin network (so they can reach origin)
+  connect_network "$ORIGIN_NETWORK" "$EDGE1_NAME"
+  connect_network "$ORIGIN_NETWORK" "$EDGE2_NAME"
   
   # Select peers for each edge (before creating peers)
   EDGE1_PEERS=$(select_edge_peers "$EDGE_PEER_COUNT" "$COUNT")

@@ -49,21 +49,42 @@ func (g *Graph) Upsert(nodeID string, region string, rtt int, neighbors []string
 			node.Metadata[k] = v
 		}
 	}
-	node.Neighbors = make(map[string]struct{})
+	// Merge neighbors instead of replacing (preserve existing connections like edge connections)
+	// Only replace if this is a new node
+	if node.Neighbors == nil {
+		node.Neighbors = make(map[string]struct{})
+	}
+	
 	for _, neighbor := range neighbors {
 		neighbor = strings.TrimSpace(neighbor)
 		if neighbor == "" || neighbor == nodeID {
 			continue
 		}
+		// Add neighbor to this node
+		node.Neighbors[neighbor] = struct{}{}
+		
+		// Create bidirectional link if neighbor exists
 		other, ok := g.nodes[neighbor]
-		if !ok {
+		if ok {
+			if other.Neighbors == nil {
+				other.Neighbors = make(map[string]struct{})
+			}
+			other.Neighbors[nodeID] = struct{}{}
+		}
+	}
+	
+	// Also check if any existing nodes have this node as a neighbor
+	// and add them to this node's neighbors (for cases where edge registered before peer)
+	for existingID, existingNode := range g.nodes {
+		if existingID == nodeID {
 			continue
 		}
-		node.Neighbors[neighbor] = struct{}{}
-		if other.Neighbors == nil {
-			other.Neighbors = make(map[string]struct{})
+		if existingNode.Neighbors != nil {
+			if _, hasThisNode := existingNode.Neighbors[nodeID]; hasThisNode {
+				// This existing node has us as a neighbor, so we should have it as a neighbor too
+				node.Neighbors[existingID] = struct{}{}
+			}
 		}
-		other.Neighbors[nodeID] = struct{}{}
 	}
 }
 

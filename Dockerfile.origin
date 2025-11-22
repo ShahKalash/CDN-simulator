@@ -12,8 +12,11 @@ RUN adduser -D origin
 USER origin
 WORKDIR /home/origin
 COPY --from=builder /origin-server /usr/local/bin/origin-server
+COPY assets/input/ /home/origin/assets/input/
+COPY Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3 /home/origin/
 COPY Rick-Roll-Sound-Effect.mp3 /home/origin/
 ENV ORIGIN_PORT=8081
+ENV SONG_PATH=Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3
 EXPOSE 8081
 ENTRYPOINT ["origin-server"]
 

@@ -1,0 +1,1578 @@
+{
+  "timestamp": "2025-11-22 18:43:44",
+  "simulations": {
+    "baseline_comparison": {
+      "scenario": "baseline_comparison",
+      "num_peers": 160,
+      "baselines": {
+        "round_robin": {
+          "avg_delay_ms": 76.64875368028255,
+          "load_imbalance": 2063514.2777705812,
+          "edge_a_load_kbps": 22670.145389446265,
+          "edge_b_load_kbps": 19797.15790059736,
+          "edge_a_utilization": 2.2670145389446263,
+          "edge_b_utilization": 1.9797157900597362,
+          "p2p_hit_rate": 0.0,
+          "edge_a_hits": 80,
+          "edge_b_hits": 80,
+          "p2p_hits": 0,
+          "super_peers": [],
+          "num_super_peers": 0
+        },
+        "nearest_edge": {
+          "avg_delay_ms": 41.325340322617144,
+          "load_imbalance": 10811586.480775788,
+          "edge_a_load_kbps": 17945.55394562543,
+          "edge_b_load_kbps": 24521.749344418196,
+          "edge_a_utilization": 1.794555394562543,
+          "edge_b_utilization": 2.4521749344418198,
+          "p2p_hit_rate": 0.0,
+          "edge_a_hits": 66,
+          "edge_b_hits": 94,
+          "p2p_hits": 0,
+          "super_peers": [],
+          "num_super_peers": 0
+        },
+        "random_super_peers": {
+          "avg_delay_ms": 25.30734953331979,
+          "load_imbalance": 10811586.480775788,
+          "edge_a_load_kbps": 17945.55394562543,
+          "edge_b_load_kbps": 24521.749344418196,
+          "edge_a_utilization": 1.794555394562543,
+          "edge_b_utilization": 2.4521749344418198,
+          "p2p_hit_rate": 0.6875,
+          "edge_a_hits": 35,
+          "edge_b_hits": 15,
+          "p2p_hits": 110,
+          "super_peers": [
+            "peer-25",
+            "peer-112",
+            "peer-142",
+            "peer-132",
+            "peer-12",
+            "peer-120",
+            "peer-1",
+            "peer-40",
+            "peer-22",
+            "peer-86",
+            "peer-87",
+            "peer-126",
+            "peer-68",
+            "peer-23",
+            "peer-35"
+          ],
+          "num_super_peers": 15
+        }
+      },
+      "optimized": {
+        "avg_delay_ms": 22.126140625580284,
+        "load_imbalance": 3275.9264901331994,
+        "edge_a_load_kbps": 21176.415935101057,
+        "edge_b_load_kbps": 21290.887354942573,
+        "edge_a_utilization": 2.117641593510106,
+        "edge_b_utilization": 2.1290887354942574,
+        "p2p_hit_rate": 0.95,
+        "edge_a_hits": 5,
+        "edge_b_hits": 3,
+        "p2p_hits": 152,
+        "super_peers": [
+          "peer-126",
+          "peer-25",
+          "peer-110",
+          "peer-4",
+          "peer-97",
+          "peer-41",
+          "peer-11",
+          "peer-52",
+          "peer-145",
+          "peer-121",
+          "peer-128",
+          "peer-137",
+          "peer-50",
+          "peer-131",
+          "peer-5"
+        ],
+        "num_super_peers": 15,
+        "convergence_history": [
+          {
+            "generation": 0,
+            "best_fitness": 13.545435848479405,
+            "avg_fitness": 10.496517903115265,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 1,
+            "best_fitness": 13.611290042030678,
+            "avg_fitness": 11.545982141174791,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 2,
+            "best_fitness": 13.715954279883153,
+            "avg_fitness": 11.896045678738693,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 3,
+            "best_fitness": 13.796304485790028,
+            "avg_fitness": 12.282673371723325,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 4,
+            "best_fitness": 13.849856293944596,
+            "avg_fitness": 12.575402624618603,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 5,
+            "best_fitness": 13.861995816098734,
+            "avg_fitness": 12.889847177814536,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 6,
+            "best_fitness": 14.038992859783297,
+            "avg_fitness": 12.62458355279456,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 7,
+            "best_fitness": 14.068930239921887,
+            "avg_fitness": 12.785391829950678,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 8,
+            "best_fitness": 14.08527787999542,
+            "avg_fitness": 13.065031797222328,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 9,
+            "best_fitness": 14.08527787999542,
+            "avg_fitness": 12.92771164288078,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 10,
+            "best_fitness": 14.086378173231504,
+            "avg_fitness": 12.984239461594688,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 11,
+            "best_fitness": 14.086378173231504,
+            "avg_fitness": 13.05664840592741,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 12,
+            "best_fitness": 14.160903737366015,
+            "avg_fitness": 12.87329732936255,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 13,
+            "best_fitness": 14.161006455205682,
+            "avg_fitness": 12.922207530270088,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 14,
+            "best_fitness": 14.161804122949345,
+            "avg_fitness": 13.006101649936289,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 15,
+            "best_fitness": 14.183651863335733,
+            "avg_fitness": 12.886967991710355,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 16,
+            "best_fitness": 14.183651863335733,
+            "avg_fitness": 12.737230017127981,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 17,
+            "best_fitness": 14.187293709411767,
+            "avg_fitness": 12.954791010422621,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 18,
+            "best_fitness": 14.187293709411767,
+            "avg_fitness": 12.8791631559131,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 19,
+            "best_fitness": 14.187293709411767,
+            "avg_fitness": 12.914131522089734,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 20,
+            "best_fitness": 14.21892876924669,
+            "avg_fitness": 13.032087073325034,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 21,
+            "best_fitness": 14.21892876924669,
+            "avg_fitness": 13.233997584642445,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 22,
+            "best_fitness": 14.21892876924669,
+            "avg_fitness": 12.965958974277676,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 23,
+            "best_fitness": 14.26569046911956,
+            "avg_fitness": 12.806897321721248,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 24,
+            "best_fitness": 14.267503084283483,
+            "avg_fitness": 13.20017752114801,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 25,
+            "best_fitness": 14.296594059996295,
+            "avg_fitness": 13.052608176359175,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 26,
+            "best_fitness": 14.305063483779813,
+            "avg_fitness": 13.107068416817034,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 27,
+            "best_fitness": 14.305063483779813,
+            "avg_fitness": 13.01380592232737,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 28,
+            "best_fitness": 14.305063483779813,
+            "avg_fitness": 12.977026875736719,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 29,
+            "best_fitness": 14.305063483779813,
+            "avg_fitness": 13.40661381822274,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 30,
+            "best_fitness": 14.305063483779813,
+            "avg_fitness": 12.994245872693874,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 31,
+            "best_fitness": 14.388513781058238,
+            "avg_fitness": 12.866368868266312,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 32,
+            "best_fitness": 14.388513781058238,
+            "avg_fitness": 13.227753000063181,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 33,
+            "best_fitness": 14.388513781058238,
+            "avg_fitness": 12.862303414957244,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 34,
+            "best_fitness": 14.401065824080394,
+            "avg_fitness": 13.289840288473085,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 35,
+            "best_fitness": 14.401065824080394,
+            "avg_fitness": 13.11132122026004,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 36,
+            "best_fitness": 14.459043764828719,
+            "avg_fitness": 13.225264236163879,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 37,
+            "best_fitness": 14.459043764828719,
+            "avg_fitness": 13.351494590027732,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 38,
+            "best_fitness": 14.522660615364295,
+            "avg_fitness": 13.45123746320825,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 39,
+            "best_fitness": 14.522660615364295,
+            "avg_fitness": 13.308383881137917,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 40,
+            "best_fitness": 14.555591465791748,
+            "avg_fitness": 13.186997052974336,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 41,
+            "best_fitness": 14.566190097457243,
+            "avg_fitness": 12.918615422705697,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 42,
+            "best_fitness": 14.585317946411815,
+            "avg_fitness": 13.309520689619866,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 43,
+            "best_fitness": 14.602771312765245,
+            "avg_fitness": 13.453976610612509,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 44,
+            "best_fitness": 14.607813008547089,
+            "avg_fitness": 13.315857548205079,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 45,
+            "best_fitness": 14.647536223092716,
+            "avg_fitness": 13.287153289930599,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 46,
+            "best_fitness": 14.647536223092716,
+            "avg_fitness": 13.242053373910542,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 47,
+            "best_fitness": 14.647536223092716,
+            "avg_fitness": 13.25340016142368,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 48,
+            "best_fitness": 14.66527590026279,
+            "avg_fitness": 13.267944775413847,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 49,
+            "best_fitness": 14.70108037870909,
+            "avg_fitness": 13.191484523110839,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 50,
+            "best_fitness": 14.752222012884985,
+            "avg_fitness": 13.375022304005565,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 51,
+            "best_fitness": 14.752222012884985,
+            "avg_fitness": 13.312745994476405,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 52,
+            "best_fitness": 14.757711175264511,
+            "avg_fitness": 13.36419423992377,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 53,
+            "best_fitness": 14.761218532957567,
+            "avg_fitness": 13.511891019719005,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 54,
+            "best_fitness": 14.761218532957567,
+            "avg_fitness": 13.383914625301482,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 55,
+            "best_fitness": 14.761218532957567,
+            "avg_fitness": 13.458210446388101,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 56,
+            "best_fitness": 14.761218532957567,
+            "avg_fitness": 13.558762147905515,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 57,
+            "best_fitness": 14.761218532957567,
+            "avg_fitness": 13.666362502026878,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 58,
+            "best_fitness": 14.770790576607286,
+            "avg_fitness": 13.361710878762972,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 59,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.334664474566504,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 60,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.601318732159907,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 61,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.360936450536617,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 62,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.363739961843669,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 63,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.584549003604307,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 64,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.028761632697668,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 65,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.19495433510018,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 66,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.557223405214392,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 67,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.343515874774145,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 68,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.340349897808183,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 69,
+            "best_fitness": 14.780907051112804,
+            "avg_fitness": 13.4270086580603,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 70,
+            "best_fitness": 14.821999958376566,
+            "avg_fitness": 13.372824898803621,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 71,
+            "best_fitness": 14.822382670896967,
+            "avg_fitness": 13.375225037233054,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 72,
+            "best_fitness": 14.82345984055491,
+            "avg_fitness": 13.732953852115804,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 73,
+            "best_fitness": 14.839841413638778,
+            "avg_fitness": 13.684883194053791,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 74,
+            "best_fitness": 14.839841413638778,
+            "avg_fitness": 13.410195254879774,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 75,
+            "best_fitness": 14.839841413638778,
+            "avg_fitness": 13.48445149280317,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 76,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.544236384953063,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 77,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.34674832227011,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 78,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.553069472389547,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 79,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.370369396512785,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 80,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.562699267990514,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 81,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.455868221570393,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 82,
+            "best_fitness": 14.843958487830951,
+            "avg_fitness": 13.630863273845215,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 83,
+            "best_fitness": 14.847613424826548,
+            "avg_fitness": 13.664340973335142,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 84,
+            "best_fitness": 14.847613424826548,
+            "avg_fitness": 13.316335068572785,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 85,
+            "best_fitness": 14.905893988541402,
+            "avg_fitness": 13.195376093428502,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 86,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.56984560416832,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 87,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.433582173375411,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 88,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.561358419868332,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 89,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.45773498108086,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 90,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.396639843714517,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 91,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.65618743062284,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 92,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.557009982174977,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 93,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.302195839309446,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 94,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.582335086200295,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 95,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.366523459514099,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 96,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.682685516868137,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 97,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.598440409218888,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 98,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.596399001125263,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          },
+          {
+            "generation": 99,
+            "best_fitness": 14.93351857812274,
+            "avg_fitness": 13.610120345910929,
+            "best_avg_delay": 0.0,
+            "best_load_imbalance": 0.0,
+            "best_edge_a_load": 0.0,
+            "best_edge_b_load": 0.0
+          }
+        ]
+      }
+    },
+    "parameter_sensitivity": {
+      "scenario": "parameter_sensitivity",
+      "num_peers": 160,
+      "alpha_beta_tests": [
+        {
+          "alpha": 0.5,
+          "beta": 0.5,
+          "metrics": {
+            "avg_delay_ms": 23.59345972181392,
+            "load_imbalance": 353.88399653243954,
+            "edge_a_load_kbps": 21214.83984030955,
+            "edge_b_load_kbps": 21252.46344973408,
+            "edge_a_utilization": 2.121483984030955,
+            "edge_b_utilization": 2.1252463449734083,
+            "p2p_hit_rate": 0.91875,
+            "edge_a_hits": 10,
+            "edge_b_hits": 3,
+            "p2p_hits": 147,
+            "super_peers": [
+              "peer-48",
+              "peer-157",
+              "peer-127",
+              "peer-25",
+              "peer-56",
+              "peer-18",
+              "peer-24",
+              "peer-84",
+              "peer-130",
+              "peer-44",
+              "peer-13",
+              "peer-138",
+              "peer-75",
+              "peer-77",
+              "peer-72"
+            ],
+            "num_super_peers": 15
+          }
+        },
+        {
+          "alpha": 0.6,
+          "beta": 0.4,
+          "metrics": {
+            "avg_delay_ms": 23.21049155422804,
+            "load_imbalance": 294.7630329111828,
+            "edge_a_load_kbps": 21250.820309294588,
+            "edge_b_load_kbps": 21216.482980749042,
+            "edge_a_utilization": 2.125082030929459,
+            "edge_b_utilization": 2.1216482980749043,
+            "p2p_hit_rate": 0.88125,
+            "edge_a_hits": 12,
+            "edge_b_hits": 7,
+            "p2p_hits": 141,
+            "super_peers": [
+              "peer-127",
+              "peer-158",
+              "peer-85",
+              "peer-77",
+              "peer-110",
+              "peer-7",
+              "peer-99",
+              "peer-73",
+              "peer-115",
+              "peer-125",
+              "peer-144",
+              "peer-83",
+              "peer-116",
+              "peer-11",
+              "peer-80"
+            ],
+            "num_super_peers": 15
+          }
+        },
+        {
+          "alpha": 0.7,
+          "beta": 0.30000000000000004,
+          "metrics": {
+            "avg_delay_ms": 22.352704049958504,
+            "load_imbalance": 10711.498590289611,
+            "edge_a_load_kbps": 21337.148014959555,
+            "edge_b_load_kbps": 21130.155275084075,
+            "edge_a_utilization": 2.1337148014959557,
+            "edge_b_utilization": 2.1130155275084075,
+            "p2p_hit_rate": 0.91875,
+            "edge_a_hits": 8,
+            "edge_b_hits": 5,
+            "p2p_hits": 147,
+            "super_peers": [
+              "peer-38",
+              "peer-119",
+              "peer-141",
+              "peer-145",
+              "peer-92",
+              "peer-62",
+              "peer-18",
+              "peer-63",
+              "peer-25",
+              "peer-93",
+              "peer-142",
+              "peer-4",
+              "peer-118",
+              "peer-97",
+              "peer-154"
+            ],
+            "num_super_peers": 15
+          }
+        },
+        {
+          "alpha": 0.8,
+          "beta": 0.19999999999999996,
+          "metrics": {
+            "avg_delay_ms": 23.12401898222101,
+            "load_imbalance": 266803.5139470182,
+            "edge_a_load_kbps": 21750.18190933071,
+            "edge_b_load_kbps": 20717.121380712917,
+            "edge_a_utilization": 2.175018190933071,
+            "edge_b_utilization": 2.0717121380712915,
+            "p2p_hit_rate": 0.91875,
+            "edge_a_hits": 5,
+            "edge_b_hits": 8,
+            "p2p_hits": 147,
+            "super_peers": [
+              "peer-124",
+              "peer-157",
+              "peer-118",
+              "peer-123",
+              "peer-106",
+              "peer-83",
+              "peer-132",
+              "peer-10",
+              "peer-104",
+              "peer-42",
+              "peer-1",
+              "peer-105",
+              "peer-137",
+              "peer-159",
+              "peer-21"
+            ],
+            "num_super_peers": 15
+          }
+        },
+        {
+          "alpha": 0.9,
+          "beta": 0.09999999999999998,
+          "metrics": {
+            "avg_delay_ms": 21.88982404915483,
+            "load_imbalance": 170.536205341997,
+            "edge_a_load_kbps": 21246.710596179622,
+            "edge_b_load_kbps": 21220.592693864008,
+            "edge_a_utilization": 2.1246710596179623,
+            "edge_b_utilization": 2.122059269386401,
+            "p2p_hit_rate": 0.89375,
+            "edge_a_hits": 13,
+            "edge_b_hits": 4,
+            "p2p_hits": 143,
+            "super_peers": [
+              "peer-113",
+              "peer-131",
+              "peer-107",
+              "peer-136",
+              "peer-5",
+              "peer-120",
+              "peer-126",
+              "peer-118",
+              "peer-60",
+              "peer-48",
+              "peer-32",
+              "peer-53",
+              "peer-92",
+              "peer-97",
+              "peer-49"
+            ],
+            "num_super_peers": 15
+          }
+        }
+      ],
+      "super_peer_tests": [
+        {
+          "num_super_peers": 5,
+          "metrics": {
+            "avg_delay_ms": 33.84860179148017,
+            "load_imbalance": 54957.70452052198,
+            "edge_a_load_kbps": 21468.08224140488,
+            "edge_b_load_kbps": 20999.22104863874,
+            "edge_a_utilization": 2.146808224140488,
+            "edge_b_utilization": 2.0999221048638743,
+            "p2p_hit_rate": 0.5875,
+            "edge_a_hits": 42,
+            "edge_b_hits": 24,
+            "p2p_hits": 94,
+            "super_peers": [
+              "peer-146",
+              "peer-91",
+              "peer-15",
+              "peer-83",
+              "peer-48"
+            ],
+            "num_super_peers": 5
+          }
+        },
+        {
+          "num_super_peers": 10,
+          "metrics": {
+            "avg_delay_ms": 25.673781125415214,
+            "load_imbalance": 784979.4930406183,
+            "edge_a_load_kbps": 22119.64232953301,
+            "edge_b_load_kbps": 20347.660960510617,
+            "edge_a_utilization": 2.211964232953301,
+            "edge_b_utilization": 2.0347660960510616,
+            "p2p_hit_rate": 0.9,
+            "edge_a_hits": 10,
+            "edge_b_hits": 6,
+            "p2p_hits": 144,
+            "super_peers": [
+              "peer-146",
+              "peer-18",
+              "peer-13",
+              "peer-10",
+              "peer-64",
+              "peer-151",
+              "peer-117",
+              "peer-119",
+              "peer-108",
+              "peer-20"
+            ],
+            "num_super_peers": 10
+          }
+        },
+        {
+          "num_super_peers": 15,
+          "metrics": {
+            "avg_delay_ms": 23.964828074983075,
+            "load_imbalance": 317.69897790225383,
+            "edge_a_load_kbps": 21215.827532760548,
+            "edge_b_load_kbps": 21251.475757283082,
+            "edge_a_utilization": 2.121582753276055,
+            "edge_b_utilization": 2.1251475757283083,
+            "p2p_hit_rate": 0.90625,
+            "edge_a_hits": 12,
+            "edge_b_hits": 3,
+            "p2p_hits": 145,
+            "super_peers": [
+              "peer-55",
+              "peer-83",
+              "peer-160",
+              "peer-103",
+              "peer-38",
+              "peer-125",
+              "peer-45",
+              "peer-31",
+              "peer-15",
+              "peer-21",
+              "peer-40",
+              "peer-64",
+              "peer-61",
+              "peer-115",
+              "peer-42"
+            ],
+            "num_super_peers": 15
+          }
+        },
+        {
+          "num_super_peers": 20,
+          "metrics": {
+            "avg_delay_ms": 21.614943144743837,
+            "load_imbalance": 276456.39540244074,
+            "edge_a_load_kbps": 20707.86043607815,
+            "edge_b_load_kbps": 21759.44285396548,
+            "edge_a_utilization": 2.070786043607815,
+            "edge_b_utilization": 2.175944285396548,
+            "p2p_hit_rate": 0.9125,
+            "edge_a_hits": 8,
+            "edge_b_hits": 6,
+            "p2p_hits": 146,
+            "super_peers": [
+              "peer-115",
+              "peer-27",
+              "peer-53",
+              "peer-13",
+              "peer-150",
+              "peer-104",
+              "peer-127",
+              "peer-62",
+              "peer-95",
+              "peer-16",
+              "peer-59",
+              "peer-18",
+              "peer-5",
+              "peer-113",
+              "peer-131",
+              "peer-146",
+              "peer-39",
+              "peer-126",
+              "peer-26",
+              "peer-15"
+            ],
+            "num_super_peers": 20
+          }
+        },
+        {
+          "num_super_peers": 25,
+          "metrics": {
+            "avg_delay_ms": 21.001547819967193,
+            "load_imbalance": 1693.9564571912588,
+            "edge_a_load_kbps": 21274.809347304516,
+            "edge_b_load_kbps": 21192.49394273912,
+            "edge_a_utilization": 2.1274809347304515,
+            "edge_b_utilization": 2.1192493942739117,
+            "p2p_hit_rate": 0.9625,
+            "edge_a_hits": 5,
+            "edge_b_hits": 1,
+            "p2p_hits": 154,
+            "super_peers": [
+              "peer-6",
+              "peer-40",
+              "peer-29",
+              "peer-156",
+              "peer-136",
+              "peer-20",
+              "peer-140",
+              "peer-117",
+              "peer-67",
+              "peer-82",
+              "peer-79",
+              "peer-145",
+              "peer-125",
+              "peer-59",
+              "peer-91",
+              "peer-104",
+              "peer-76",
+              "peer-157",
+              "peer-158",
+              "peer-1",
+              "peer-121",
+              "peer-92",
+              "peer-73",
+              "peer-97",
+              "peer-80"
+            ],
+            "num_super_peers": 25
+          }
+        },
+        {
+          "num_super_peers": 30,
+          "metrics": {
+            "avg_delay_ms": 20.206814692072836,
+            "load_imbalance": 920.932956602646,
+            "edge_a_load_kbps": 21263.99852223517,
+            "edge_b_load_kbps": 21203.304767808455,
+            "edge_a_utilization": 2.1263998522235172,
+            "edge_b_utilization": 2.1203304767808455,
+            "p2p_hit_rate": 0.9625,
+            "edge_a_hits": 4,
+            "edge_b_hits": 2,
+            "p2p_hits": 154,
+            "super_peers": [
+              "peer-43",
+              "peer-63",
+              "peer-71",
+              "peer-47",
+              "peer-158",
+              "peer-17",
+              "peer-160",
+              "peer-3",
+              "peer-61",
+              "peer-106",
+              "peer-83",
+              "peer-24",
+              "peer-147",
+              "peer-145",
+              "peer-135",
+              "peer-30",
+              "peer-10",
+              "peer-132",
+              "peer-124",
+              "peer-11",
+              "peer-7",
+              "peer-81",
+              "peer-148",
+              "peer-39",
+              "peer-16",
+              "peer-125",
+              "peer-28",
+              "peer-57",
+              "peer-52",
+              "peer-8"
+            ],
+            "num_super_peers": 30
+          }
+        }
+      ]
+    },
+    "scalability": {
+      "scenario": "scalability",
+      "network_sizes": [
+        {
+          "num_peers": 50,
+          "num_super_peers": 5,
+          "elapsed_time_seconds": 0.46900415420532227,
+          "metrics": {
+            "avg_delay_ms": 32.939897936523266,
+            "load_imbalance": 1400.7796484661067,
+            "edge_a_load_kbps": 7461.660511642602,
+            "edge_b_load_kbps": 7386.806529825571,
+            "edge_a_utilization": 0.7461660511642602,
+            "edge_b_utilization": 0.738680652982557,
+            "p2p_hit_rate": 0.52,
+            "edge_a_hits": 11,
+            "edge_b_hits": 13,
+            "p2p_hits": 26,
+            "super_peers": [
+              "peer-30",
+              "peer-44",
+              "peer-40",
+              "peer-42",
+              "peer-46"
+            ],
+            "num_super_peers": 5
+          }
+        },
+        {
+          "num_peers": 100,
+          "num_super_peers": 10,
+          "elapsed_time_seconds": 1.788992166519165,
+          "metrics": {
+            "avg_delay_ms": 26.134376051396153,
+            "load_imbalance": 14758.422677288576,
+            "edge_a_load_kbps": 13093.309837256073,
+            "edge_b_load_kbps": 12850.34133989653,
+            "edge_a_utilization": 1.3093309837256073,
+            "edge_b_utilization": 1.285034133989653,
+            "p2p_hit_rate": 0.82,
+            "edge_a_hits": 13,
+            "edge_b_hits": 5,
+            "p2p_hits": 82,
+            "super_peers": [
+              "peer-40",
+              "peer-73",
+              "peer-47",
+              "peer-53",
+              "peer-77",
+              "peer-75",
+              "peer-15",
+              "peer-61",
+              "peer-86",
+              "peer-51"
+            ],
+            "num_super_peers": 10
+          }
+        },
+        {
+          "num_peers": 160,
+          "num_super_peers": 16,
+          "elapsed_time_seconds": 3.342926502227783,
+          "metrics": {
+            "avg_delay_ms": 21.72148160473394,
+            "load_imbalance": 94351.72188832845,
+            "edge_a_load_kbps": 21540.818898954145,
+            "edge_b_load_kbps": 20926.484391089485,
+            "edge_a_utilization": 2.1540818898954144,
+            "edge_b_utilization": 2.0926484391089484,
+            "p2p_hit_rate": 0.925,
+            "edge_a_hits": 6,
+            "edge_b_hits": 6,
+            "p2p_hits": 148,
+            "super_peers": [
+              "peer-123",
+              "peer-114",
+              "peer-50",
+              "peer-88",
+              "peer-137",
+              "peer-145",
+              "peer-144",
+              "peer-53",
+              "peer-42",
+              "peer-52",
+              "peer-54",
+              "peer-85",
+              "peer-155",
+              "peer-95",
+              "peer-103",
+              "peer-13"
+            ],
+            "num_super_peers": 16
+          }
+        },
+        {
+          "num_peers": 200,
+          "num_super_peers": 20,
+          "elapsed_time_seconds": 6.512359142303467,
+          "metrics": {
+            "avg_delay_ms": 21.239483840439263,
+            "load_imbalance": 246709.39024826308,
+            "edge_a_load_kbps": 28061.324784794793,
+            "edge_b_load_kbps": 27067.927804231105,
+            "edge_a_utilization": 2.8061324784794794,
+            "edge_b_utilization": 2.7067927804231107,
+            "p2p_hit_rate": 0.9,
+            "edge_a_hits": 14,
+            "edge_b_hits": 6,
+            "p2p_hits": 180,
+            "super_peers": [
+              "peer-106",
+              "peer-89",
+              "peer-94",
+              "peer-142",
+              "peer-179",
+              "peer-195",
+              "peer-111",
+              "peer-101",
+              "peer-64",
+              "peer-135",
+              "peer-79",
+              "peer-104",
+              "peer-34",
+              "peer-32",
+              "peer-97",
+              "peer-154",
+              "peer-21",
+              "peer-103",
+              "peer-43",
+              "peer-82"
+            ],
+            "num_super_peers": 20
+          }
+        },
+        {
+          "num_peers": 300,
+          "num_super_peers": 30,
+          "elapsed_time_seconds": 14.382220029830933,
+          "metrics": {
+            "avg_delay_ms": 19.372683304780246,
+            "load_imbalance": 227942.3327645364,
+            "edge_a_load_kbps": 41497.472259129274,
+            "edge_b_load_kbps": 42452.33839166207,
+            "edge_a_utilization": 4.149747225912927,
+            "edge_b_utilization": 4.2452338391662074,
+            "p2p_hit_rate": 0.96,
+            "edge_a_hits": 9,
+            "edge_b_hits": 3,
+            "p2p_hits": 288,
+            "super_peers": [
+              "peer-34",
+              "peer-12",
+              "peer-264",
+              "peer-157",
+              "peer-19",
+              "peer-208",
+              "peer-114",
+              "peer-253",
+              "peer-169",
+              "peer-174",
+              "peer-215",
+              "peer-164",
+              "peer-2",
+              "peer-254",
+              "peer-202",
+              "peer-40",
+              "peer-15",
+              "peer-160",
+              "peer-120",
+              "peer-46",
+              "peer-60",
+              "peer-165",
+              "peer-54",
+              "peer-51",
+              "peer-17",
+              "peer-45",
+              "peer-70",
+              "peer-25",
+              "peer-32",
+              "peer-74"
+            ],
+            "num_super_peers": 30
+          }
+        }
+      ]
+    }
+  }
+}

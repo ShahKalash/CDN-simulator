@@ -42,7 +42,7 @@ func loadConfig() originConfig {
 		DBUser:       getenv("DB_USER", "media"),
 		DBPassword:   getenv("DB_PASSWORD", "media_pass"),
 		DBName:       getenv("DB_NAME", "hls"),
-		SongPath:     getenv("SONG_PATH", "Rick-Roll-Sound-Effect.mp3"),
+		SongPath:     getenv("SONG_PATH", "Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3"),
 		SegmentDir:   getenv("SEGMENT_DIR", "./segments"),
 	}
 }
@@ -113,7 +113,11 @@ func (a *originApp) segmentSong(ctx context.Context) error {
 		songPath,
 		filepath.Join(".", songPath),
 		filepath.Join("/home/origin", songPath),
-		"Rick-Roll-Sound-Effect.mp3",
+		filepath.Join("assets", "input", songPath),
+		filepath.Join(".", "assets", "input", songPath),
+		"Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3",
+		filepath.Join(".", "Ricky_Astley_-_Never_Gonna_Give_You_Up_(mp3.pm).mp3"),
+		"Rick-Roll-Sound-Effect.mp3", // Fallback to old file
 		filepath.Join(".", "Rick-Roll-Sound-Effect.mp3"),
 	}
 	
@@ -136,7 +140,23 @@ func (a *originApp) segmentSong(ctx context.Context) error {
 		return fmt.Errorf("failed to create segment dir: %w", err)
 	}
 
-	songID := "rickroll"
+	// Extract song ID from filename
+	// For the new file, use a simple ID
+	var songID string
+	filename := strings.ToLower(filepath.Base(songPath))
+	if strings.Contains(filename, "never_gonna_give_you_up") || strings.Contains(filename, "ricky_astley") {
+		songID = "nevergonnagiveyouup"
+	} else {
+		// For other files, use filename-based ID
+		songID = strings.TrimSuffix(filepath.Base(songPath), filepath.Ext(songPath))
+		songID = strings.ToLower(strings.ReplaceAll(songID, " ", "_"))
+		songID = strings.ReplaceAll(songID, "(", "")
+		songID = strings.ReplaceAll(songID, ")", "")
+		songID = strings.ReplaceAll(songID, "-", "_")
+		if songID == "" {
+			songID = "rickroll" // Fallback
+		}
+	}
 	bitrate := "128k"
 	outputDir := filepath.Join(a.cfg.SegmentDir, songID, bitrate)
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -320,7 +340,7 @@ func main() {
 	cfg := loadConfig()
 	app := &originApp{cfg: cfg}
 	
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	// Initialize database
